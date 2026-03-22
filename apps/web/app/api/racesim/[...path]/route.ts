@@ -21,6 +21,15 @@ function resolveApiBaseUrl() {
 }
 
 async function forward(request: NextRequest, path: string[], method: "GET" | "POST") {
+  if (method === "GET" && path.join("/") === "defaults") {
+    return NextResponse.json(catalogFallback, {
+      status: 200,
+      headers: {
+        "x-racesim-source": "frontend-catalog",
+      },
+    });
+  }
+
   const url = `${resolveApiBaseUrl()}/${path.join("/")}`;
   const headers = new Headers();
   const contentType = request.headers.get("content-type");
@@ -51,16 +60,6 @@ async function forward(request: NextRequest, path: string[], method: "GET" | "PO
       headers: responseHeaders,
     });
   } catch (error) {
-    if (method === "GET" && path.join("/") === "defaults") {
-      return NextResponse.json(catalogFallback, {
-        status: 200,
-        headers: {
-          "x-racesim-fallback": "catalog",
-          "x-racesim-fallback-reason": error instanceof Error ? error.name : "unknown",
-        },
-      });
-    }
-
     return NextResponse.json(
       {
         detail:

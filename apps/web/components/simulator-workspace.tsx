@@ -222,6 +222,14 @@ function formatSigned(value: number) {
   return String(value);
 }
 
+function hasUnknownDriverIds(
+  defaults: DefaultsPayload,
+  payload: Array<{ driver_id: string }>,
+) {
+  const knownIds = new Set(defaults.drivers.map((driver) => driver.id));
+  return payload.some((item) => !knownIds.has(item.driver_id));
+}
+
 function badgeVariantForConfidence(value: DriverResult["confidence_label"]) {
   if (value === "Stable") {
     return "success";
@@ -474,7 +482,7 @@ export function SimulatorWorkspace() {
     activeForm: SimulationFormState = form as SimulationFormState,
     options?: { suppressError?: boolean },
   ) {
-    if (!activeForm) {
+    if (!activeForm || !defaults) {
       return;
     }
     setLoadingSuggestions(true);
@@ -483,6 +491,9 @@ export function SimulatorWorkspace() {
     }
     try {
       const payload = await fetchSuggestions<StrategySuggestion[]>(activeForm);
+      if (hasUnknownDriverIds(defaults, payload)) {
+        throw new Error("The backend is still serving an older season catalog. Try again after the API redeploy completes.");
+      }
       setSuggestions(payload);
     } catch (requestError) {
       if (!options?.suppressError) {
@@ -494,13 +505,16 @@ export function SimulatorWorkspace() {
   }
 
   async function executeSimulation() {
-    if (!form) {
+    if (!form || !defaults) {
       return;
     }
     setLoadingSimulation(true);
     setError(null);
     try {
       const response = await runSimulation<SimulationResponse>(form);
+      if (hasUnknownDriverIds(defaults, response.drivers)) {
+        throw new Error("The backend is still on the old fictional grid. Redeploy the API before running 2026 race simulations.");
+      }
       startTransition(() => {
         setSimulation(response);
         setSuggestions(response.strategy_suggestions);
