@@ -20,6 +20,26 @@ function resolveApiBaseUrl() {
   return value;
 }
 
+function normalizeBackendError(text: string, status: number) {
+  const lower = text.toLowerCase();
+  if (
+    lower.includes("sample catalog") ||
+    lower.includes("fictional grid") ||
+    lower.includes("unknown-gp") ||
+    lower.includes("was not found")
+  ) {
+    return NextResponse.json(
+      {
+        detail:
+          "The backend deployment is still on the old fictional season data. Redeploy the Render API from the latest main branch to run 2026 Formula 1 simulations.",
+      },
+      { status: 503 },
+    );
+  }
+
+  return new NextResponse(text, { status });
+}
+
 async function forward(request: NextRequest, path: string[], method: "GET" | "POST") {
   if (method === "GET" && path.join("/") === "defaults") {
     return NextResponse.json(catalogFallback, {
@@ -53,6 +73,10 @@ async function forward(request: NextRequest, path: string[], method: "GET" | "PO
 
     if (responseType) {
       responseHeaders.set("content-type", responseType);
+    }
+
+    if (!response.ok) {
+      return normalizeBackendError(text, response.status);
     }
 
     return new NextResponse(text, {

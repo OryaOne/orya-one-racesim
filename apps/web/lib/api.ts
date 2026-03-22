@@ -3,7 +3,12 @@ const API_PROXY_URL = "/api/racesim";
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(text || "API request failed");
+    try {
+      const payload = JSON.parse(text) as { detail?: string };
+      throw new Error(payload.detail || text || "API request failed");
+    } catch {
+      throw new Error(text || "API request failed");
+    }
   }
   return response.json() as Promise<T>;
 }
