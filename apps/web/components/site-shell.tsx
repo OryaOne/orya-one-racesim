@@ -31,7 +31,7 @@ export function SiteShell({
               </div>
               <div>
                 <div className="font-display text-sm tracking-[0.24em] text-white">ORYA ONE</div>
-                <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">RaceSim | Grand Prix Strategy</div>
+                <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">RaceSim | 2026 Formula 1 strategy</div>
               </div>
             </Link>
             <nav className="flex items-center gap-2 text-sm">
@@ -45,7 +45,7 @@ export function SiteShell({
                 </Link>
               ))}
             </nav>
-            <Badge variant="muted">F1-style MVP</Badge>
+            <Badge variant="muted">2026 season MVP</Badge>
           </div>
         </header>
         <main className="flex-1">{children}</main>

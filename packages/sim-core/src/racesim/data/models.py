@@ -11,6 +11,9 @@ class TeamProfile(BaseModel):
     color: str
     pit_crew_efficiency: float
     reliability_base: float
+    race_pace: float
+    qualifying_pace: float
+    energy_efficiency: float
 
 
 class DriverProfile(BaseModel):
@@ -24,6 +27,7 @@ class DriverProfile(BaseModel):
     overtaking: float
     consistency: float
     aggression: float
+    energy_management: float
     wet_weather_skill: float
     reliability: float
 
@@ -31,7 +35,12 @@ class DriverProfile(BaseModel):
 class TrackProfile(BaseModel):
     id: str
     name: str
+    circuit_name: str
     country: str
+    calendar_round: int
+    circuit_type: str
+    sprint_weekend: bool = False
+    homologation_note: str | None = None
     laps: int
     lap_length_km: float
     base_race_time_sec: float
@@ -40,8 +49,13 @@ class TrackProfile(BaseModel):
     fuel_sensitivity: float
     pit_loss_seconds: float
     track_position_importance: float
+    qualifying_importance: float
     weather_volatility: float
     surface_evolution: float
+    safety_car_risk: float
+    strategy_flexibility: float
+    energy_sensitivity: float
+    degradation_profile: str
     summary: str
 
 
@@ -55,6 +69,8 @@ class StrategyTemplate(BaseModel):
     flexibility: float
     tire_load: float
     track_position_bias: float
+    qualifying_bias: float
+    energy_bias: float
     safety_car_bias: float
     weather_adaptability: float
 
@@ -83,4 +99,3 @@ class DatasetBundle(BaseModel):
     grands_prix: List[TrackProfile] = Field(alias="tracks")
     strategy_templates: List[StrategyTemplate]
     weather_presets: List[WeatherPreset]
-

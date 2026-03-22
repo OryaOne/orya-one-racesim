@@ -1,45 +1,112 @@
 [
   {
-    "id": "aureline-gp",
-    "name": "Aureline GP",
-    "color": "#d9b66e",
-    "pit_crew_efficiency": 0.92,
-    "reliability_base": 0.95
+    "id": "mclaren",
+    "name": "McLaren",
+    "color": "#ff7a1a",
+    "pit_crew_efficiency": 0.97,
+    "reliability_base": 0.95,
+    "race_pace": 92,
+    "qualifying_pace": 91,
+    "energy_efficiency": 0.9
   },
   {
-    "id": "northstar-dynamics",
-    "name": "Northstar Dynamics",
-    "color": "#78b8d9",
+    "id": "mercedes",
+    "name": "Mercedes",
+    "color": "#00d2be",
+    "pit_crew_efficiency": 0.95,
+    "reliability_base": 0.94,
+    "race_pace": 90,
+    "qualifying_pace": 90,
+    "energy_efficiency": 0.94
+  },
+  {
+    "id": "ferrari",
+    "name": "Ferrari",
+    "color": "#dc0000",
+    "pit_crew_efficiency": 0.93,
+    "reliability_base": 0.91,
+    "race_pace": 89,
+    "qualifying_pace": 90,
+    "energy_efficiency": 0.88
+  },
+  {
+    "id": "red-bull-racing",
+    "name": "Red Bull Racing",
+    "color": "#1e41ff",
+    "pit_crew_efficiency": 0.94,
+    "reliability_base": 0.91,
+    "race_pace": 90,
+    "qualifying_pace": 89,
+    "energy_efficiency": 0.92
+  },
+  {
+    "id": "racing-bulls",
+    "name": "Racing Bulls",
+    "color": "#3d7dff",
     "pit_crew_efficiency": 0.9,
-    "reliability_base": 0.93
+    "reliability_base": 0.89,
+    "race_pace": 81,
+    "qualifying_pace": 81,
+    "energy_efficiency": 0.84
   },
   {
-    "id": "helix-motorsport",
-    "name": "Helix Motorsport",
-    "color": "#93d39f",
-    "pit_crew_efficiency": 0.88,
-    "reliability_base": 0.91
+    "id": "aston-martin",
+    "name": "Aston Martin",
+    "color": "#006f62",
+    "pit_crew_efficiency": 0.91,
+    "reliability_base": 0.9,
+    "race_pace": 80,
+    "qualifying_pace": 79,
+    "energy_efficiency": 0.83
   },
   {
-    "id": "solstice-racing",
-    "name": "Solstice Racing",
-    "color": "#ef9579",
+    "id": "alpine",
+    "name": "Alpine",
+    "color": "#ff5aa5",
     "pit_crew_efficiency": 0.89,
-    "reliability_base": 0.9
+    "reliability_base": 0.87,
+    "race_pace": 78,
+    "qualifying_pace": 78,
+    "energy_efficiency": 0.82
   },
   {
-    "id": "verdant-apex",
-    "name": "Verdant Apex",
-    "color": "#88c6b5",
-    "pit_crew_efficiency": 0.86,
-    "reliability_base": 0.88
+    "id": "williams",
+    "name": "Williams",
+    "color": "#2b5cff",
+    "pit_crew_efficiency": 0.91,
+    "reliability_base": 0.9,
+    "race_pace": 83,
+    "qualifying_pace": 82,
+    "energy_efficiency": 0.86
   },
   {
-    "id": "vectoris-performance",
-    "name": "Vectoris Performance",
-    "color": "#c5c8d4",
-    "pit_crew_efficiency": 0.85,
-    "reliability_base": 0.87
+    "id": "haas",
+    "name": "Haas",
+    "color": "#b6babd",
+    "pit_crew_efficiency": 0.88,
+    "reliability_base": 0.87,
+    "race_pace": 77,
+    "qualifying_pace": 76,
+    "energy_efficiency": 0.8
+  },
+  {
+    "id": "audi",
+    "name": "Audi",
+    "color": "#9c9fa3",
+    "pit_crew_efficiency": 0.89,
+    "reliability_base": 0.88,
+    "race_pace": 76,
+    "qualifying_pace": 77,
+    "energy_efficiency": 0.87
+  },
+  {
+    "id": "cadillac",
+    "name": "Cadillac",
+    "color": "#a7b0ba",
+    "pit_crew_efficiency": 0.87,
+    "reliability_base": 0.85,
+    "race_pace": 74,
+    "qualifying_pace": 73,
+    "energy_efficiency": 0.8
   }
 ]
-

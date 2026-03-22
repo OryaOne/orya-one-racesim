@@ -1,50 +1,50 @@
 # Roadmap
 
-This roadmap separates near-term product work from deeper realism work so the project can evolve without losing clarity.
+This roadmap separates the immediate 2026 Formula 1 simulator work from the heavier realism work that should land later.
 
-## Release line
+## Current release line
 
-### `v0.1.x` Showcase-quality MVP
+### `v0.1.x` 2026 season MVP
 
 Focus:
 
-- documentation and release polish
-- demo presets and visual collateral
-- strategy and event coherence
-- high-signal UI refinement
-- local developer experience
+- real 2026 Formula 1 season structure
+- circuit-specific Grand Prix behavior
+- better strategy and race-control coherence
+- points-aware outputs
+- cleaner Formula 1 framing across the app and docs
 
-## Near-term realism and product work
+## Near-term work
 
-- qualifying simulation and grid generation
-- richer weather transitions by lap window
-- pit-stop optimizer for strategy comparison mode
-- saved scenario presets
-- more granular safety-car bunching and restart logic
+- standalone qualifying simulation
+- deeper Sprint-weekend handling
+- richer wet crossover logic
+- pit-stop optimizer for strategy comparison
+- more detailed race-control summaries
 
-## Mid-term modeling and calibration
+## Modeling and calibration work
 
 - historical data ingestion adapters
 - calibration workflows and benchmark suites
-- teammate interactions and team-order constraints
-- richer overtaking and defending logic
-- multi-race comparison mode
+- constructor and teammate interaction logic
+- richer overtaking and defending behavior
+- better points and championship-context layers
 
 ## Longer-term expansion
 
-- lap-by-lap simulation mode
-- explainability drill-down by stint
+- lap-by-lap race mode
+- stint-level explainability views
 - confidence calibration improvements
-- track-evolution modeling from rubbering and temperature drift
-- public scenario gallery
+- weather transitions by lap window
+- multi-race comparison and scenario galleries
 
 ## Non-goals for the current MVP
 
 The current release is not trying to be:
 
-- an official-series replica
-- a betting product
-- a full physics engine
+- an official Formula 1 product
+- a betting tool
 - a telemetry-perfect predictor
+- a full physics engine
 
-Those distinctions are deliberate and should stay clear in future releases.
+Those boundaries should stay clear as the project evolves.

@@ -38,52 +38,70 @@ def evaluate_strategy(
     weights: SimulationWeights,
     environment: EnvironmentControls,
 ) -> StrategyFit:
-    score = 47.0
+    score = 49.0
     reasons: list[str] = []
-    tradeoff = "balanced execution profile with moderate upside and controlled exposure"
+    tradeoff = "balanced race-day profile with moderate upside and limited downside if the weekend stays near baseline"
 
     avg_pit_window = sum(strategy.pit_windows) / max(1, len(strategy.pit_windows))
     first_stop_ratio = strategy.pit_windows[0] / max(1, track.laps)
     tire_resilience = (driver.tire_management / 100.0) * (1.0 - strategy.tire_load)
-    track_position_pressure = track.track_position_importance * track.overtaking_difficulty
-    caution_pressure = max(environment.full_safety_cars, weather.safety_car_probability)
+    track_position_pressure = track.track_position_importance * track.qualifying_importance
+    caution_pressure = max(environment.full_safety_cars, weather.safety_car_probability, track.safety_car_risk)
     weather_pressure = max(environment.rain_onset, weather.rain_onset_probability)
+    energy_pressure = track.energy_sensitivity * max(
+        weights.energy_deployment_weight,
+        environment.energy_deployment_intensity,
+    )
+    sprint_pressure = 0.08 if track.sprint_weekend else 0.0
 
     if tire_resilience > 0.45:
         score += 10.0
-        reasons.append("strong tire conservation supports longer opening stints")
+        reasons.append("strong tire conservation supports a longer opening stint")
 
     if track_position_pressure > 0.52 and strategy.track_position_bias > 0.62 and driver.qualifying_strength > 82:
-        score += 9.2 * weights.qualifying_importance
-        reasons.append("track-position sensitivity rewards qualifying-led race control")
+        score += 8.6 * weights.qualifying_importance
+        reasons.append("qualifying and track position carry unusual weight at this circuit")
 
-    if track.overtaking_difficulty < 0.55 and strategy.aggression > 0.65 and driver.overtaking > 80:
+    if (
+        track.overtaking_difficulty < 0.55
+        and strategy.aggression > 0.65
+        and driver.overtaking > 80
+        and strategy.energy_bias > 0.6
+    ):
         score += 6.6 * weights.overtaking_sensitivity
-        reasons.append("passing bandwidth keeps the undercut threat credible")
+        reasons.append("active-aero and deployment windows keep the undercut threat live")
+
+    if energy_pressure > 0.44 and strategy.energy_bias > 0.72 and driver.energy_management > 82:
+        score += 7.4 * weights.energy_deployment_weight
+        reasons.append("2026 energy demand favors a stronger deployment plan here")
 
     if strategy.safety_car_bias * caution_pressure > 0.14:
         score += 6.0
-        reasons.append("higher caution probability increases the value of flexible stop timing")
+        reasons.append("higher safety-car pressure increases the value of flexible stop timing")
 
     if strategy.weather_adaptability * weather_pressure > 0.16:
         score += 7.2
-        reasons.append("mixed-weather risk favors an adaptable compound sequence")
+        reasons.append("rain-risk conditions favor an adaptable crossover plan")
+
+    if track.sprint_weekend and strategy.qualifying_bias > 0.65:
+        score += 3.4 + sprint_pressure * 8.0
+        reasons.append("the Sprint format adds value to a stronger parc ferme baseline")
 
     if track.fuel_sensitivity > 0.57 and strategy.pit_stop_count > 1:
         score -= track.fuel_sensitivity * weights.fuel_effect_weight * 5.2
-        tradeoff = "higher raw pace upside, but added stop count leaves less margin on fuel-sensitive layouts"
+        tradeoff = "higher pace upside, but the extra stop count leaves less margin on fuel-sensitive tracks"
 
-    if avg_pit_window > track.laps * 0.42 and strategy.flexibility > 0.68:
+    if avg_pit_window > track.laps * 0.42 and strategy.flexibility > 0.68 and track.strategy_flexibility > 0.5:
         score += 3.8
-        reasons.append("later pit windows preserve optionality if the race neutralizes late")
+        reasons.append("later pit windows preserve optionality if race control intervenes late")
 
     if first_stop_ratio < 0.3 and track.tire_stress > 0.64 and strategy.aggression > 0.7:
         score += 4.2
-        tradeoff = "strong undercut upside, but it depends on clean air and disciplined pit timing"
+        tradeoff = "strong undercut upside, but it depends on clean air and disciplined stop timing"
 
     if strategy.pit_stop_count == 1 and track_position_pressure > 0.55:
         score += 4.0
-        tradeoff = "protects track position and pit-loss exposure, but late-stint wear can become punitive"
+        tradeoff = "protects track position and pit-loss exposure, but late-stint wear can become the limiting factor"
 
     deg_penalty = track.tire_stress * strategy.tire_load * weights.tire_wear_weight * 9.5
     score -= deg_penalty
@@ -105,10 +123,10 @@ def evaluate_strategy(
         score -= 3.4
 
     if weather_pressure < 0.18 and strategy.weather_adaptability > 0.8 and strategy.pit_stop_count > 1:
-        tradeoff = "weather flexibility is available, but the dry-race baseline sacrifices some efficiency"
+        tradeoff = "weather flexibility is available, but the dry-race baseline gives away some efficiency"
 
     if not reasons:
-        reasons.append("balanced profile offers the lowest-regret baseline for this scenario")
+        reasons.append("balanced profile offers the lowest-regret baseline for this Grand Prix")
 
     return StrategyFit(strategy=strategy, score=score, reasons=reasons[:3], tradeoff=tradeoff)
 

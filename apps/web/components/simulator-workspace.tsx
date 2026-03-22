@@ -48,6 +48,7 @@ const defaultWeights = {
   driver_form_weight: 0.68,
   qualifying_importance: 0.74,
   overtaking_sensitivity: 0.57,
+  energy_deployment_weight: 0.66,
   pit_stop_delta_sensitivity: 0.61,
   stochastic_variance: 0.52,
   reliability_sensitivity: 0.46,
@@ -59,6 +60,7 @@ const defaultEnvironment = {
   rain_onset: 0.22,
   track_evolution: 0.58,
   temperature_variation: 0.44,
+  energy_deployment_intensity: 0.62,
   crashes: 0.16,
   dnfs: 0.1,
   yellow_flags: 0.21,
@@ -71,18 +73,19 @@ const defaultEnvironment = {
 
 const DEMO_PRESETS = [
   {
-    id: "harbor-volatility",
-    label: "Harbor volatility",
-    description: "A wet-dry swing with enough VSC and safety-car pressure to stress stint plans and pit timing.",
-    grand_prix_id: "rainford-harbor-gp",
-    weather_preset_id: "mixed-conditions",
+    id: "spa-weather-swing",
+    label: "Spa weather swing",
+    description: "A mixed-condition Spa run with crossover timing, safety-car risk, and a wide strategy range.",
+    grand_prix_id: "belgian-grand-prix",
+    weather_preset_id: "rain-crossover-threat",
     simulation_runs: 1200,
     complexity_level: "high" as const,
     field_strategy_preset: "",
     weights: {
       ...defaultWeights,
       tire_wear_weight: 0.78,
-      overtaking_sensitivity: 0.61,
+      overtaking_sensitivity: 0.63,
+      energy_deployment_weight: 0.71,
       stochastic_variance: 0.58,
     },
     environment: {
@@ -96,22 +99,24 @@ const DEMO_PRESETS = [
       randomness_intensity: 0.62,
       track_evolution: 0.63,
       temperature_variation: 0.56,
+      energy_deployment_intensity: 0.68,
       crashes: 0.22,
     },
   },
   {
-    id: "street-track-control",
-    label: "Street-track control",
-    description: "A track-position race where qualifying influence and undercut timing matter more than outright passing.",
-    grand_prix_id: "azure-coast-gp",
-    weather_preset_id: "dry-stable",
+    id: "monaco-track-position",
+    label: "Monaco track position",
+    description: "A qualifying-led Monaco setup where pit loss and clean air matter more than passing volume.",
+    grand_prix_id: "monaco-grand-prix",
+    weather_preset_id: "dry-baseline",
     simulation_runs: 900,
     complexity_level: "balanced" as const,
-    field_strategy_preset: "conservative-one-stop",
+    field_strategy_preset: "qualifying-track-position",
     weights: {
       ...defaultWeights,
-      qualifying_importance: 0.83,
+      qualifying_importance: 0.9,
       pit_stop_delta_sensitivity: 0.68,
+      overtaking_sensitivity: 0.38,
       stochastic_variance: 0.44,
     },
     environment: {
@@ -123,24 +128,26 @@ const DEMO_PRESETS = [
     },
   },
   {
-    id: "thermal-deg-pressure",
-    label: "Thermal deg pressure",
-    description: "A degradation-limited Sunday where tire management and pit windows define the race outcome.",
-    grand_prix_id: "desert-crown-gp",
-    weather_preset_id: "dry-stable",
+    id: "monza-deployment-attack",
+    label: "Monza deployment attack",
+    description: "A low-drag Monza scenario that pushes energy deployment, overtaking windows, and undercut aggression.",
+    grand_prix_id: "italian-grand-prix",
+    weather_preset_id: "dry-baseline",
     simulation_runs: 1000,
     complexity_level: "balanced" as const,
     field_strategy_preset: "",
     weights: {
       ...defaultWeights,
-      tire_wear_weight: 0.87,
-      fuel_effect_weight: 0.63,
-      pit_stop_delta_sensitivity: 0.66,
+      fuel_effect_weight: 0.58,
+      overtaking_sensitivity: 0.7,
+      energy_deployment_weight: 0.88,
+      pit_stop_delta_sensitivity: 0.57,
     },
     environment: {
       ...defaultEnvironment,
-      track_evolution: 0.7,
-      temperature_variation: 0.65,
+      track_evolution: 0.54,
+      energy_deployment_intensity: 0.82,
+      temperature_variation: 0.33,
       randomness_intensity: 0.46,
     },
   },
@@ -367,22 +374,22 @@ function DriverTable({ drivers }: { drivers: DriverResult[] }) {
   return (
     <div className="overflow-x-auto rounded-[18px] border border-white/8">
       <div className="min-w-[980px]">
-        <div className="grid grid-cols-[56px_1.7fr_1.15fr_repeat(7,minmax(86px,1fr))] gap-3 bg-white/[0.04] px-4 py-3 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+        <div className="grid grid-cols-[56px_1.8fr_1.2fr_repeat(7,minmax(82px,1fr))] gap-3 bg-white/[0.04] px-4 py-3 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
           <span>Pos</span>
           <span>Driver</span>
-          <span>Stint</span>
+          <span>Strategy</span>
           <span>Win</span>
           <span>Podium</span>
+          <span>Points</span>
           <span>DNF</span>
           <span>Fit</span>
-          <span>Event load</span>
           <span>Confidence</span>
           <span>Exp</span>
         </div>
         {drivers.map((driver, index) => (
           <div
             key={driver.driver_id}
-            className="grid grid-cols-[56px_1.7fr_1.15fr_repeat(7,minmax(86px,1fr))] gap-3 border-t border-white/6 px-4 py-4 text-sm"
+            className="grid grid-cols-[56px_1.8fr_1.2fr_repeat(7,minmax(82px,1fr))] gap-3 border-t border-white/6 px-4 py-4 text-sm"
           >
             <div className="font-display text-xl text-white">{index + 1}</div>
             <div>
@@ -400,9 +407,9 @@ function DriverTable({ drivers }: { drivers: DriverResult[] }) {
             </div>
             <div>{formatPct(driver.win_probability)}</div>
             <div>{formatPct(driver.podium_probability)}</div>
+            <div>{driver.expected_points.toFixed(1)}</div>
             <div>{formatPct(driver.dnf_probability)}</div>
             <div>{driver.strategy_fit_score.toFixed(1)}</div>
-            <div>{formatPct(driver.event_exposure)}</div>
             <div>
               <Badge variant={badgeVariantForConfidence(driver.confidence_label)}>
                 {driver.confidence_label}
@@ -434,8 +441,6 @@ export function SimulatorWorkspace() {
         const initialForm = buildInitialForm(payload);
         setDefaults(payload);
         setForm(initialForm);
-        const initialSuggestions = await fetchSuggestions<StrategySuggestion[]>(initialForm);
-        setSuggestions(initialSuggestions);
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : "Failed to reach the API.");
       } finally {
@@ -446,17 +451,43 @@ export function SimulatorWorkspace() {
     void load();
   }, []);
 
-  async function requestSuggestions(activeForm: SimulationFormState = form as SimulationFormState) {
+  useEffect(() => {
+    if (!defaults || !form || suggestions.length > 0) {
+      return;
+    }
+    const activeForm = form;
+    async function hydrateSuggestions() {
+      setLoadingSuggestions(true);
+      try {
+        const payload = await fetchSuggestions<StrategySuggestion[]>(activeForm);
+        setSuggestions(payload);
+      } catch {
+        // A cold backend should not block the workspace from rendering.
+      } finally {
+        setLoadingSuggestions(false);
+      }
+    }
+    void hydrateSuggestions();
+  }, [defaults, form, suggestions.length]);
+
+  async function requestSuggestions(
+    activeForm: SimulationFormState = form as SimulationFormState,
+    options?: { suppressError?: boolean },
+  ) {
     if (!activeForm) {
       return;
     }
     setLoadingSuggestions(true);
-    setError(null);
+    if (!options?.suppressError) {
+      setError(null);
+    }
     try {
       const payload = await fetchSuggestions<StrategySuggestion[]>(activeForm);
       setSuggestions(payload);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Failed to load strategy suggestions.");
+      if (!options?.suppressError) {
+        setError(requestError instanceof Error ? requestError.message : "Failed to load strategy suggestions.");
+      }
     } finally {
       setLoadingSuggestions(false);
     }
@@ -494,9 +525,9 @@ export function SimulatorWorkspace() {
     return (
       <Card className="border-rose-400/20 bg-rose-950/20">
         <CardHeader>
-          <CardTitle>API connection required</CardTitle>
+          <CardTitle>2026 season data unavailable</CardTitle>
           <CardDescription>
-            Start the FastAPI service on `http://localhost:8000` for local development, or set `API_URL` / `NEXT_PUBLIC_API_URL` for the frontend proxy.
+            Start the FastAPI service on `http://localhost:8000` for local development, or set `API_URL` / `NEXT_PUBLIC_API_URL` so the frontend proxy can reach the 2026 Formula 1 backend.
           </CardDescription>
         </CardHeader>
         {error ? <CardContent className="text-sm text-rose-200">{error}</CardContent> : null}
@@ -524,7 +555,7 @@ export function SimulatorWorkspace() {
   const positionData =
     deferredSimulation?.drivers.slice(0, 8).map((driver) => ({
       name: driver.driver_name.split(" ")[0],
-      expected: Number((14 - driver.expected_finish_position).toFixed(2)),
+      expected: Number((defaults.drivers.length + 1 - driver.expected_finish_position).toFixed(2)),
       rawExpected: driver.expected_finish_position,
       win: Number((driver.win_probability * 100).toFixed(1)),
     })) ?? [];
@@ -545,7 +576,7 @@ export function SimulatorWorkspace() {
         <ControlSection
           eyebrow="01 · Grand Prix Weekend"
           title="Grand Prix and circuit setup"
-          description="Choose the Grand Prix, review the circuit profile, and set the baseline race-weekend assumptions."
+          description="Choose a 2026 Formula 1 Grand Prix, review the circuit profile, and set the baseline weekend assumptions."
           icon={Gauge}
         >
           <div className="grid gap-3 md:grid-cols-3">
@@ -568,7 +599,7 @@ export function SimulatorWorkspace() {
           <div className="mt-4">
             <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Demo race weekends</div>
             <div className="mt-2 text-sm leading-6 text-muted-foreground">
-              Use these presets to start from recognizable Grand Prix strategy patterns.
+              Use these presets to start from recognizable 2026 Formula 1 strategy patterns.
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -590,22 +621,39 @@ export function SimulatorWorkspace() {
               <div>
                 <div className="text-[11px] uppercase tracking-[0.2em] text-primary">Circuit profile</div>
                 <div className="mt-2 font-display text-2xl text-white">{activeTrack.name}</div>
+                <div className="mt-1 text-sm text-muted-foreground">{activeTrack.circuit_name}</div>
                 <p className="mt-3 text-sm leading-6 text-muted-foreground">{activeTrack.summary}</p>
               </div>
-              <Badge variant="muted">{activeWeather.label}</Badge>
+              <div className="flex flex-col items-end gap-2">
+                <Badge variant="muted">{activeWeather.label}</Badge>
+                {activeTrack.sprint_weekend ? <Badge variant="warning">Sprint weekend</Badge> : null}
+              </div>
             </div>
+            {activeTrack.homologation_note ? (
+              <div className="mt-4 rounded-[12px] border border-amber-300/20 bg-amber-400/10 p-3 text-xs leading-5 text-amber-100">
+                {activeTrack.homologation_note}
+              </div>
+            ) : null}
             <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
+              <div className="rounded-[12px] border border-white/8 bg-black/20 p-3">
+                <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Qualifying weight</div>
+                <div className="mt-2 text-white">{Math.round(activeTrack.qualifying_importance * 100)}/100</div>
+              </div>
               <div className="rounded-[12px] border border-white/8 bg-black/20 p-3">
                 <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Track position</div>
                 <div className="mt-2 text-white">{Math.round(activeTrack.track_position_importance * 100)}/100</div>
               </div>
               <div className="rounded-[12px] border border-white/8 bg-black/20 p-3">
-                <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Overtaking</div>
-                <div className="mt-2 text-white">{Math.round((1 - activeTrack.overtaking_difficulty) * 100)}/100</div>
+                <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Energy demand</div>
+                <div className="mt-2 text-white">{Math.round(activeTrack.energy_sensitivity * 100)}/100</div>
               </div>
               <div className="rounded-[12px] border border-white/8 bg-black/20 p-3">
-                <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Tire stress</div>
-                <div className="mt-2 text-white">{Math.round(activeTrack.tire_stress * 100)}/100</div>
+                <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Safety car risk</div>
+                <div className="mt-2 text-white">{Math.round(activeTrack.safety_car_risk * 100)}/100</div>
+              </div>
+              <div className="rounded-[12px] border border-white/8 bg-black/20 p-3">
+                <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Deg profile</div>
+                <div className="mt-2 text-white capitalize">{activeTrack.degradation_profile}</div>
               </div>
               <div className="rounded-[12px] border border-white/8 bg-black/20 p-3">
                 <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Weather swing</div>
@@ -617,8 +665,8 @@ export function SimulatorWorkspace() {
 
         <ControlSection
           eyebrow="02 · Race Conditions"
-          title="Race conditions and control events"
-          description="Tune weather swings, race control events, reliability pressure, and late-race incidents."
+          title="Race control and track conditions"
+          description="Tune weather swings, deployment intensity, race-control risk, reliability pressure, and late-race incidents."
           icon={CloudRain}
         >
           <div className="grid gap-4">
@@ -636,36 +684,36 @@ export function SimulatorWorkspace() {
             />
             <div className="grid gap-4 sm:grid-cols-2">
               <SliderField
+                label="Energy deployment"
+                value={form.environment.energy_deployment_intensity}
+                onChange={(value) =>
+                  setForm({ ...form, environment: { ...form.environment, energy_deployment_intensity: value } })
+                }
+                description="Raises how strongly 2026 deployment and active-aero transitions shape the race."
+              />
+              <SliderField
                 label="Virtual safety car"
                 value={form.environment.virtual_safety_cars}
                 onChange={(value) =>
                   setForm({ ...form, environment: { ...form.environment, virtual_safety_cars: value } })
                 }
-                description="Partial neutralization with a moderate effect on pit timing."
+                description="Partial neutralization with a moderate effect on pit timing and restart energy release."
               />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
               <SliderField
                 label="Safety cars"
                 value={form.environment.full_safety_cars}
                 onChange={(value) =>
                   setForm({ ...form, environment: { ...form.environment, full_safety_cars: value } })
                 }
-                description="Compresses gaps and increases the value of flexible strategies."
+                description="Compresses gaps and increases the value of reactive pit-wall calls."
               />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
               <SliderField
-              label="Retirement pressure"
+                label="Retirement pressure"
                 value={form.environment.dnfs}
                 onChange={(value) => setForm({ ...form, environment: { ...form.environment, dnfs: value } })}
                 description="Broad mechanical and incident retirement pressure."
-              />
-              <SliderField
-              label="Race variance"
-                value={form.environment.randomness_intensity}
-                onChange={(value) =>
-                  setForm({ ...form, environment: { ...form.environment, randomness_intensity: value } })
-                }
-                description="Widens the finish range without replacing the core pace logic."
               />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -678,7 +726,7 @@ export function SimulatorWorkspace() {
                 description="Rewards stable drivers as the surface builds grip through the race."
               />
               <SliderField
-                label="Temperature variation"
+                label="Temperature swing"
                 value={form.environment.temperature_variation}
                 onChange={(value) =>
                   setForm({ ...form, environment: { ...form.environment, temperature_variation: value } })
@@ -702,6 +750,14 @@ export function SimulatorWorkspace() {
                 description="Adds late volatility when gaps and strategy pressure are tightest."
               />
             </div>
+            <SliderField
+              label="Race variance"
+              value={form.environment.randomness_intensity}
+              onChange={(value) =>
+                setForm({ ...form, environment: { ...form.environment, randomness_intensity: value } })
+              }
+              description="Widens the finish range without replacing the baseline pace, strategy, and race-control logic."
+            />
           </div>
         </ControlSection>
 
@@ -764,7 +820,7 @@ export function SimulatorWorkspace() {
         <ControlSection
           eyebrow="04 · Driver & Team"
           title="Driver and team assumptions"
-          description="Adjust recent form, qualifying influence, and assigned strategy without flattening the underlying race model."
+          description="Adjust recent form, review team context, and assign driver-level race plans without flattening the underlying 2026 model."
           icon={Radar}
         >
           <div className="max-h-[420px] space-y-3 overflow-auto pr-1">
@@ -785,9 +841,10 @@ export function SimulatorWorkspace() {
                       <Badge variant={badgeVariantForRisk(suggestion.risk_profile)}>{suggestion.risk_profile}</Badge>
                     ) : null}
                   </div>
-                  <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-muted-foreground">
+                  <div className="mt-3 grid grid-cols-4 gap-2 text-xs text-muted-foreground">
                     <div>Qual {driver.qualifying_strength}</div>
                     <div>Tire {driver.tire_management}</div>
+                    <div>Deploy {driver.energy_management}</div>
                     <div>Racecraft {driver.overtaking}</div>
                   </div>
                   <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_110px]">
@@ -841,7 +898,7 @@ export function SimulatorWorkspace() {
         <ControlSection
           eyebrow="05 · Race Simulation"
           title="Race simulation settings"
-          description="Set run depth and calibrate how strongly qualifying, tire wear, pit loss, and race pace influence the result."
+          description="Set run depth and calibrate how strongly qualifying, tire wear, deployment, pit loss, and race pace influence the result."
           icon={SlidersHorizontal}
         >
           <div className="grid gap-4 sm:grid-cols-2">
@@ -889,7 +946,7 @@ export function SimulatorWorkspace() {
                 onChange={(value) =>
                   setForm({ ...form, weights: { ...form.weights, qualifying_importance: value } })
                 }
-                description="Controls track-position leverage in the forecast."
+                description="Controls how strongly Saturday pace carries into the race projection."
               />
               <SliderField
                 label="Fuel sensitivity"
@@ -905,8 +962,18 @@ export function SimulatorWorkspace() {
                 onChange={(value) =>
                   setForm({ ...form, weights: { ...form.weights, overtaking_sensitivity: value } })
                 }
-                description="Controls how much passing ability matters on more open tracks."
+                description="Controls how much passing ability matters on the more open circuits."
               />
+              <SliderField
+                label="Energy deployment"
+                value={form.weights.energy_deployment_weight}
+                onChange={(value) =>
+                  setForm({ ...form, weights: { ...form.weights, energy_deployment_weight: value } })
+                }
+                description="Controls how strongly the 2026 deployment model shapes pace and overtaking."
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
               <SliderField
                 label="Pit delta sensitivity"
                 value={form.weights.pit_stop_delta_sensitivity}
@@ -915,15 +982,15 @@ export function SimulatorWorkspace() {
                 }
                 description="Raises the strategic cost of extra stops and poor pit timing."
               />
+              <SliderField
+                label="Reliability sensitivity"
+                value={form.weights.reliability_sensitivity}
+                onChange={(value) =>
+                  setForm({ ...form, weights: { ...form.weights, reliability_sensitivity: value } })
+                }
+                description="Amplifies how strongly reliability and event pressure weaken otherwise strong runs."
+              />
             </div>
-            <SliderField
-              label="Reliability sensitivity"
-              value={form.weights.reliability_sensitivity}
-              onChange={(value) =>
-                setForm({ ...form, weights: { ...form.weights, reliability_sensitivity: value } })
-              }
-              description="Amplifies how strongly reliability and event pressure weaken otherwise strong runs."
-            />
           </div>
         </ControlSection>
 
@@ -938,8 +1005,10 @@ export function SimulatorWorkspace() {
             </div>
           ) : null}
           <div className="rounded-[14px] border border-white/8 bg-black/20 p-4 text-sm leading-6 text-muted-foreground">
-            Current race-weekend setup: <span className="text-white">{activeWeather.label}</span> with circuit weather swing at{" "}
-            <span className="text-white">{Math.round(activeTrack.weather_volatility * 100)}</span>.
+            Current weekend setup: <span className="text-white">{activeTrack.name}</span> in{" "}
+            <span className="text-white">{activeWeather.label}</span>, with qualifying weight at{" "}
+            <span className="text-white">{Math.round(activeTrack.qualifying_importance * 100)}</span> and deployment demand at{" "}
+            <span className="text-white">{Math.round(activeTrack.energy_sensitivity * 100)}</span>.
           </div>
         </div>
       </div>
@@ -950,18 +1019,20 @@ export function SimulatorWorkspace() {
             <CardContent className="p-8">
               <div className="flex flex-wrap items-start justify-between gap-5">
                 <div className="max-w-3xl">
-                  <Badge>Race outcome projection</Badge>
+                  <Badge>2026 Formula 1 race outcome projection</Badge>
                   <h2 className="mt-5 font-display text-[clamp(2.2rem,4.5vw,4.6rem)] leading-[0.96] tracking-[-0.04em] text-white">
-                    Podium, finish, and disruption outlook for the current Grand Prix setup.
+                    Podium, points, and disruption outlook for the current Grand Prix setup.
                   </h2>
                   <p className="mt-4 text-base leading-7 text-muted-foreground">
-                    Qualifying influence, tire wear, pit timing, race control events, and Monte Carlo sampling are combined in one race projection.
+                    Qualifying influence, tire degradation, deployment pressure, race control events, and Monte Carlo sampling are combined in one race projection.
                   </p>
                 </div>
                 <div className="rounded-[16px] border border-white/8 bg-white/[0.03] px-4 py-4">
                   <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Active Grand Prix</div>
                   <div className="mt-2 font-display text-2xl text-white">{activeTrack.name}</div>
-                  <div className="mt-1 text-sm text-muted-foreground">{activeWeather.label}</div>
+                  <div className="mt-1 text-sm text-muted-foreground">
+                    {activeTrack.circuit_name} · {activeWeather.label}
+                  </div>
                 </div>
               </div>
               {!deferredSimulation ? (
@@ -971,7 +1042,7 @@ export function SimulatorWorkspace() {
                   </div>
                   <div className="mt-5 font-display text-2xl text-white">Race projection will populate here</div>
                   <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-                    Run the current Grand Prix setup to inspect finish distributions, race-control risk, strategy fit, and driver notes grounded in the simulation outputs.
+                    Run the current Grand Prix setup to inspect finish distributions, points outlook, race-control risk, and driver notes grounded in the simulation outputs.
                   </p>
                 </div>
               ) : (
@@ -982,14 +1053,14 @@ export function SimulatorWorkspace() {
                     detail={leadDriver ? `${formatPct(leadDriver.win_probability)} win probability` : "Awaiting run"}
                   />
                   <MetricPanel
+                    label="Projected points leader"
+                    value={leadDriver ? leadDriver.expected_points.toFixed(1) : "Pending"}
+                    detail={leadDriver ? `${formatPct(leadDriver.points_probability)} chance of scoring` : "Awaiting run"}
+                  />
+                  <MetricPanel
                     label="Race control pressure"
                     value={deferredSimulation.event_summary.dominant_factor}
                     detail={deferredSimulation.scenario.event_outlook}
-                  />
-                  <MetricPanel
-                    label="Race volatility"
-                    value={deferredSimulation.event_summary.volatility_index.toFixed(2)}
-                    detail="Combined weather swing and race-control sensitivity"
                   />
                   <MetricPanel
                     label="Projection confidence"
@@ -1011,6 +1082,14 @@ export function SimulatorWorkspace() {
                   <CardDescription>{deferredSimulation.scenario.headline}</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-4">
+                  {deferredSimulation.scenario.sprint_weekend ? (
+                    <div className="rounded-[16px] border border-amber-300/20 bg-amber-400/10 p-5">
+                      <div className="text-[11px] uppercase tracking-[0.2em] text-amber-100">Sprint format</div>
+                      <p className="mt-3 text-sm leading-6 text-amber-50/85">
+                        This weekend uses the Sprint format, so qualifying leverage and parc ferme constraints carry more weight than usual.
+                      </p>
+                    </div>
+                  ) : null}
                   <div className="rounded-[16px] border border-white/8 bg-black/20 p-5">
                     <div className="text-[11px] uppercase tracking-[0.2em] text-primary">Strategy outlook</div>
                     <p className="mt-3 text-sm leading-6 text-muted-foreground">
@@ -1237,7 +1316,7 @@ export function SimulatorWorkspace() {
                 <CardHeader>
                   <CardTitle>Constructors outlook</CardTitle>
                   <CardDescription>
-                    Combined expected finish and outcome share at the team level.
+                    Combined expected finish, points return, and outcome share at the team level.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-3">
@@ -1249,8 +1328,8 @@ export function SimulatorWorkspace() {
                       </div>
                       <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                         <div className="rounded-[12px] border border-white/8 bg-white/[0.03] p-3">
-                          <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Win share</div>
-                          <div className="mt-2 text-white">{formatPct(team.combined_win_probability)}</div>
+                          <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Expected points</div>
+                          <div className="mt-2 text-white">{team.expected_points.toFixed(1)}</div>
                         </div>
                         <div className="rounded-[12px] border border-white/8 bg-white/[0.03] p-3">
                           <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Podium share</div>

@@ -4,6 +4,9 @@ export type TeamProfile = {
   color: string;
   pit_crew_efficiency: number;
   reliability_base: number;
+  race_pace: number;
+  qualifying_pace: number;
+  energy_efficiency: number;
 };
 
 export type DriverProfile = {
@@ -17,6 +20,7 @@ export type DriverProfile = {
   overtaking: number;
   consistency: number;
   aggression: number;
+  energy_management: number;
   wet_weather_skill: number;
   reliability: number;
 };
@@ -24,7 +28,12 @@ export type DriverProfile = {
 export type TrackProfile = {
   id: string;
   name: string;
+  circuit_name: string;
   country: string;
+  calendar_round: number;
+  circuit_type: string;
+  sprint_weekend: boolean;
+  homologation_note?: string | null;
   laps: number;
   lap_length_km: number;
   base_race_time_sec: number;
@@ -33,8 +42,13 @@ export type TrackProfile = {
   fuel_sensitivity: number;
   pit_loss_seconds: number;
   track_position_importance: number;
+  qualifying_importance: number;
   weather_volatility: number;
   surface_evolution: number;
+  safety_car_risk: number;
+  strategy_flexibility: number;
+  energy_sensitivity: number;
+  degradation_profile: string;
   summary: string;
 };
 
@@ -48,6 +62,8 @@ export type StrategyTemplate = {
   flexibility: number;
   tire_load: number;
   track_position_bias: number;
+  qualifying_bias: number;
+  energy_bias: number;
   safety_car_bias: number;
   weather_adaptability: number;
 };
@@ -80,6 +96,7 @@ export type SimulationWeights = {
   driver_form_weight: number;
   qualifying_importance: number;
   overtaking_sensitivity: number;
+  energy_deployment_weight: number;
   pit_stop_delta_sensitivity: number;
   stochastic_variance: number;
   reliability_sensitivity: number;
@@ -91,6 +108,7 @@ export type EnvironmentControls = {
   rain_onset: number;
   track_evolution: number;
   temperature_variation: number;
+  energy_deployment_intensity: number;
   crashes: number;
   dnfs: number;
   yellow_flags: number;
@@ -137,7 +155,9 @@ export type DriverResult = {
   win_probability: number;
   podium_probability: number;
   top_10_probability: number;
+  points_probability: number;
   dnf_probability: number;
+  expected_points: number;
   strategy_success_rate: number;
   uncertainty_index: number;
   confidence_label: "Stable" | "Measured" | "Exposed" | "High Variance";
@@ -153,6 +173,7 @@ export type TeamSummary = {
   team_id: string;
   team_name: string;
   avg_expected_finish: number;
+  expected_points: number;
   combined_win_probability: number;
   combined_podium_probability: number;
 };
@@ -177,6 +198,7 @@ export type ScenarioSummary = {
   weather_preset_name: string;
   simulation_runs: number;
   complexity_level: string;
+  sprint_weekend: boolean;
   headline: string;
   strategy_outlook: string;
   event_outlook: string;

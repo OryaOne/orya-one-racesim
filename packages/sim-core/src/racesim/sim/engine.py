@@ -29,10 +29,15 @@ class DriverStaticProfile:
     strategy: StrategyTemplate
     strategy_fit: StrategyFit
     pace_score: float
+    energy_strength: float
     event_exposure: float
     qualifying_leverage: float
     tire_risk: float
     pace_rank: int
+
+
+RACE_POINTS = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1]
+SPRINT_POINTS = [8, 7, 6, 5, 4, 3, 2, 1]
 
 
 def build_feature_vector(driver: DriverProfile, track: TrackProfile, weather: WeatherPreset) -> dict[str, float]:
@@ -137,6 +142,7 @@ class SimulationService:
             weather_preset_name=weather.label,
             simulation_runs=request.simulation_runs,
             complexity_level=request.complexity_level,
+            sprint_weekend=track.sprint_weekend,
             headline=self._headline(track, weather, request),
             strategy_outlook=self._strategy_outlook(track, weather, request),
             event_outlook=self._event_outlook(event_summary),
@@ -163,17 +169,31 @@ class SimulationService:
         for driver in drivers:
             strategy = assigned_strategies[driver.id]
             strategy_fit = evaluate_strategy(driver, track, weather, strategy, request.weights, request.environment)
-            pace_score = self.predictor.predict(build_feature_vector(driver, track, weather))
             team = get_team(driver.team_id)
+            team_baseline = (team.race_pace - 80.0) * 0.55 + (team.qualifying_pace - 80.0) * 0.18
+            pace_score = self.predictor.predict(build_feature_vector(driver, track, weather)) + team_baseline
+            energy_strength = min(
+                1.0,
+                (
+                    (driver.energy_management / 100.0) * 0.62
+                    + team.energy_efficiency * 0.38
+                )
+                * (0.82 + track.energy_sensitivity * 0.35),
+            )
             event_exposure = min(
                 1.0,
                 0.12
                 + (driver.aggression / 100.0) * 0.28
                 + (1.0 - driver.reliability / 100.0) * 0.32
+                + track.safety_car_risk * 0.14
                 + track.weather_volatility * 0.14
                 + request.environment.randomness_intensity * 0.14,
             )
-            qualifying_leverage = (driver.qualifying_strength / 100.0) * track.track_position_importance
+            qualifying_leverage = (
+                (driver.qualifying_strength / 100.0)
+                * track.qualifying_importance
+                * (0.72 + team.qualifying_pace / 250.0)
+            )
             tire_risk = track.tire_stress * strategy.tire_load * (1.04 - driver.tire_management / 100.0)
             raw_profiles.append(
                 DriverStaticProfile(
@@ -182,6 +202,7 @@ class SimulationService:
                     strategy=strategy,
                     strategy_fit=strategy_fit,
                     pace_score=pace_score,
+                    energy_strength=energy_strength,
                     event_exposure=event_exposure,
                     qualifying_leverage=qualifying_leverage,
                     tire_risk=tire_risk,
@@ -217,14 +238,26 @@ class SimulationService:
         team = get_team(profile.driver.team_id)
         pace_component = profile.pace_score * (0.7 + request.weights.driver_form_weight * 0.45)
         qualifying_bonus = (
-            profile.qualifying_leverage * request.weights.qualifying_importance * 14.5
+            profile.qualifying_leverage
+            * request.weights.qualifying_importance
+            * (0.82 + profile.strategy.qualifying_bias * 0.24)
+            * 14.5
         )
         overtaking_bonus = (
             (profile.driver.overtaking / 100.0)
             * (1.0 - track.overtaking_difficulty)
+            * (0.74 + profile.energy_strength * 0.3)
             * events.overtaking_window
             * request.weights.overtaking_sensitivity
             * 10.0
+        )
+        energy_bonus = (
+            profile.energy_strength
+            * track.energy_sensitivity
+            * request.weights.energy_deployment_weight
+            * request.environment.energy_deployment_intensity
+            * events.overtaking_window
+            * 12.0
         )
         tire_penalty = (
             profile.tire_risk
@@ -234,9 +267,21 @@ class SimulationService:
         )
         fuel_penalty = (
             track.fuel_sensitivity
-            * (1.0 + profile.strategy.track_position_bias * 0.22 + profile.strategy.pit_stop_count * 0.07)
+            * (
+                1.0
+                + profile.strategy.track_position_bias * 0.22
+                + profile.strategy.pit_stop_count * 0.07
+                + profile.strategy.energy_bias * 0.06
+            )
             * request.weights.fuel_effect_weight
             * 8.6
+        )
+        energy_penalty = (
+            track.energy_sensitivity
+            * (1.0 - profile.energy_strength * 0.86)
+            * request.weights.energy_deployment_weight
+            * events.energy_management_multiplier
+            * (4.8 + profile.strategy.aggression * 3.8)
         )
         track_evolution_bonus = (
             request.environment.track_evolution
@@ -269,6 +314,8 @@ class SimulationService:
             weather_bonus += profile.strategy.safety_car_bias * 7.0
         if events.red_flag:
             weather_bonus += profile.strategy.flexibility * 2.5
+        if track.sprint_weekend:
+            weather_bonus += profile.strategy.qualifying_bias * 1.8
 
         compression_penalty = (
             profile.pace_score
@@ -288,10 +335,12 @@ class SimulationService:
             + profile.strategy_fit.score * 0.5
             + qualifying_bonus
             + overtaking_bonus
+            + energy_bonus
             + weather_bonus
             + track_evolution_bonus
             - tire_penalty
             - fuel_penalty
+            - energy_penalty
             - temperature_penalty
             - pit_penalty
             - reliability_penalty
@@ -349,7 +398,9 @@ class SimulationService:
                     win_probability=round(positions.count(1) / len(positions), 4),
                     podium_probability=round(sum(1 for p in positions if p <= 3) / len(positions), 4),
                     top_10_probability=round(sum(1 for p in positions if p <= 10) / len(positions), 4),
+                    points_probability=round(sum(1 for p in positions if p <= 10) / len(positions), 4),
                     dnf_probability=round(dnf_probability, 4),
+                    expected_points=round(self._expected_points(positions, profile, track), 2),
                     strategy_success_rate=round(strategy_success[driver_id] / request.simulation_runs, 4),
                     uncertainty_index=uncertainty_index,
                     confidence_label=confidence_label,
@@ -383,12 +434,13 @@ class SimulationService:
                 team_id=team_id,
                 team_name=results[0].team_name,
                 avg_expected_finish=round(sum(item.expected_finish_position for item in results) / len(results), 2),
+                expected_points=round(sum(item.expected_points for item in results), 2),
                 combined_win_probability=round(sum(item.win_probability for item in results), 4),
                 combined_podium_probability=round(sum(item.podium_probability for item in results), 4),
             )
             for team_id, results in grouped_team_results.items()
         ]
-        team_summary.sort(key=lambda item: item.avg_expected_finish)
+        team_summary.sort(key=lambda item: (-item.expected_points, item.avg_expected_finish))
         return team_summary
 
     def _build_event_summary(
@@ -421,15 +473,15 @@ class SimulationService:
 
         impact_summary = []
         if rates["Weather shift"] > 0.24 or tallies["wet_start"] / runs > 0.12:
-            impact_summary.append("weather transitions are materially changing stint timing assumptions")
+            impact_summary.append("weather transitions are materially changing pit windows and crossover calls")
         if rates["Safety car"] > 0.16:
-            impact_summary.append("safety-car exposure is making flexible strategies more competitive")
+            impact_summary.append("safety-car exposure is making reactive F1 strategy calls materially stronger")
         if rates["Late incident"] > 0.16:
-            impact_summary.append("late-race disruption is widening finish-position spread in the midfield")
+            impact_summary.append("late-race disruption is widening the midfield finish spread and points fight")
         if rates["Yellow flag"] < 0.16 and rates["Safety car"] < 0.1:
-            impact_summary.append("the scenario stays relatively clean, so raw pace holds more of the result")
+            impact_summary.append("the Grand Prix stays relatively clean, so underlying pace holds more of the result")
         if not impact_summary:
-            impact_summary.append("event pressure remains balanced, so no single disruption channel dominates the race")
+            impact_summary.append("event pressure remains balanced, so no single race-control channel dominates the weekend")
 
         return EventSummary(
             weather_shift_rate=round(rates["Weather shift"], 4),
@@ -445,23 +497,29 @@ class SimulationService:
         )
 
     def _headline(self, track: TrackProfile, weather: WeatherPreset, request: SimulationRequest) -> str:
+        if track.sprint_weekend:
+            return f"{track.name} is a Sprint weekend, so parc ferme pressure and Saturday track position matter more than in a standard format."
         if weather.rain_onset_probability > 0.45 or request.environment.rain_onset > 0.4:
-            return f"{track.name} projects as an adaptive race where crossover timing and caution response matter more than a pure dry baseline."
-        if track.track_position_importance > 0.8:
-            return f"{track.name} remains track-position heavy, so qualifying leverage and low-regret pit timing carry unusual weight."
-        return f"{track.name} stays open enough for pace, pit timing, and event pressure to trade influence across the field."
+            return f"{track.name} projects as an adaptive Grand Prix where crossover timing and race-control response matter more than a clean dry baseline."
+        if track.qualifying_importance > 0.84:
+            return f"{track.name} remains heavily qualifying-led, so track position and low-regret pit timing carry unusual weight."
+        if track.energy_sensitivity > 0.8:
+            return f"{track.name} puts more emphasis on 2026 energy release and active-aero efficiency than most circuits in the calendar."
+        return f"{track.name} stays open enough for race pace, pit timing, and event pressure to trade influence across the field."
 
     def _strategy_outlook(self, track: TrackProfile, weather: WeatherPreset, request: SimulationRequest) -> str:
         if request.environment.full_safety_cars > 0.18:
             return "Flexible and safety-car-aware plans gain value because neutralized pit windows are showing up often enough to matter."
         if track.tire_stress > 0.68:
-            return "Long-run tire management remains the key separator, so overly static one-stop plans carry more degradation risk."
+            return "Long-run tire management remains the key separator, so rigid one-stop plans carry more degradation risk."
+        if track.energy_sensitivity > 0.75:
+            return "Deployment management and low-drag efficiency are a bigger part of the race than usual, so passive attack profiles lose value."
         if weather.rain_onset_probability > 0.35:
             return "Weather adaptability is not optional here; rigid dry-race plans lose value once crossover pressure rises."
-        return "Balanced strategies retain the best overall regret profile because no single race phase dominates the scenario."
+        return "Balanced strategies retain the best regret profile because no single race phase dominates the Grand Prix."
 
     def _event_outlook(self, event_summary: EventSummary) -> str:
-        return f"{event_summary.dominant_factor} is the strongest disruption channel, with an overall volatility index of {event_summary.volatility_index:.2f}."
+        return f"{event_summary.dominant_factor} is the strongest race-control channel, with an overall volatility index of {event_summary.volatility_index:.2f}."
 
     def _confidence_note(self, driver_results: list[DriverResult], event_summary: EventSummary) -> str:
         stable_count = sum(1 for driver in driver_results if driver.confidence_label == "Stable")
@@ -493,11 +551,13 @@ class SimulationService:
     ) -> list[str]:
         explanation: list[str] = []
         if profile.qualifying_leverage > 0.7:
-            explanation.append("strong projected qualifying influence should matter under this track-position setup")
+            explanation.append("qualifying influence is unusually strong under this circuit setup")
         if profile.strategy_fit.score > 56:
-            explanation.append("the assigned strategy aligns cleanly with the track and event assumptions")
+            explanation.append("the assigned strategy aligns cleanly with this circuit and race-control setup")
         if profile.tire_risk > 0.42:
-            explanation.append("higher tire wear sensitivity is trimming the long-run projection")
+            explanation.append("higher tire degradation pressure is trimming the long-run projection")
+        if track.energy_sensitivity > 0.72 and profile.energy_strength > 0.74:
+            explanation.append("the 2026 deployment model is helping more than average at this circuit")
         if weather.rain_onset_probability > 0.3 and profile.strategy.weather_adaptability > 0.7:
             explanation.append("wet-risk conditions increase the value of the more adaptive stint structure")
         if suggestion.risk_profile in {"Assertive", "High Variance"}:
@@ -508,4 +568,22 @@ class SimulationService:
             explanation.append("flexible pit timing gained value under the higher safety-car pressure in this setup")
         if profile.pace_rank <= 3 and profile.pace_score > 86:
             explanation.append("baseline pace remains one of the strongest in the field before event variance is applied")
-        return explanation[:3] or ["pace, strategy, and event exposure remain balanced with no single factor fully dominating the forecast"]
+        return explanation[:3] or [
+            "pace, strategy, and event exposure remain balanced with no single factor fully dominating the forecast"
+        ]
+
+    def _expected_points(self, positions: list[int], profile: DriverStaticProfile, track: TrackProfile) -> float:
+        race_points = sum(RACE_POINTS[position - 1] for position in positions if position <= len(RACE_POINTS)) / len(positions)
+        if not track.sprint_weekend:
+            return race_points
+
+        if profile.pace_rank > len(SPRINT_POINTS):
+            return race_points
+
+        sprint_seed = SPRINT_POINTS[profile.pace_rank - 1]
+        sprint_multiplier = min(
+            1.0,
+            0.48 + profile.qualifying_leverage * 0.36 + profile.strategy_fit.score / 140.0,
+        )
+        sprint_points = sprint_seed * sprint_multiplier
+        return race_points + sprint_points

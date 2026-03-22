@@ -1,6 +1,6 @@
 # Architecture Overview
 
-Orya One RaceSim is organized as a small monorepo with a clear split between presentation, transport, and simulation logic. The architecture is intentionally modest, with boundaries chosen to keep the project maintainable and easy to extend.
+Orya One RaceSim stays intentionally small. The project is split so the UI, API, and simulation logic can evolve without pulling the whole repo apart.
 
 ## Repository structure
 
@@ -10,21 +10,21 @@ apps/
   web/        Next.js App Router frontend
 packages/
   sim-core/   Shared simulation, strategy, event, and model code
-data/         Sample catalogs, training data, and schemas
-docs/         Technical, demo, and release-facing documentation
+data/         2026 Formula 1 season catalogs, schemas, and training data
+docs/         Technical and release-facing notes
 ```
 
 ## End-to-end flow
 
-1. The frontend loads catalog defaults from the API.
-2. The user configures a scenario in the simulator workspace.
+1. The frontend loads the 2026 season defaults from the API.
+2. The user configures a Grand Prix weekend in the simulator.
 3. The API validates the request and forwards it into `packages/sim-core`.
 4. `sim-core` resolves:
    - pace prior estimation
-   - strategy scoring and selection
-   - event generation
-   - Monte Carlo race resolution
-5. The API returns typed results for the UI to render as metrics, charts, tables, and explainability cards.
+   - strategy scoring and recommendations
+   - race-control event generation
+   - Monte Carlo race simulation
+5. The API returns typed results for the UI to render as charts, tables, summary cards, and driver notes.
 
 ## Layer breakdown
 
@@ -32,68 +32,68 @@ docs/         Technical, demo, and release-facing documentation
 
 Responsibilities:
 
-- landing, simulator, and methodology surfaces
-- dense but readable control grouping
-- result presentation and chart rendering
-- landing and documentation surfaces
+- landing, simulator, and methodology pages
+- control grouping and chart rendering
+- results presentation
+- copy, framing, and interaction flow
 
 ### `apps/api`
 
 Responsibilities:
 
-- HTTP transport and CORS configuration
-- typed request / response boundaries
+- HTTP transport
+- typed request and response boundaries
 - defaults, strategy suggestion, and simulation endpoints
-- translation of catalog lookup failures into useful HTTP errors
+- translation of lookup failures into API errors
 
 ### `packages/sim-core`
 
 Responsibilities:
 
-- sample-data loading
-- pace-model training and fallback inference
-- strategy scoring and recommendation
-- event generation and incident logic
-- Monte Carlo aggregation
-- construction of driver, team, and scenario summaries
+- loading the 2026 season catalogs
+- pace-model training and inference
+- strategy scoring
+- event generation
+- Monte Carlo race resolution
+- driver, team, and scenario summaries
 
-## Why the hybrid architecture matters
+## Why the hybrid split matters
 
-The project intentionally avoids treating all motorsport behavior as a black-box modeling problem.
+The project does not try to force everything through a single black-box model.
 
-- The neural model estimates the baseline pace prior.
-- Deterministic logic handles race effects that should stay visible.
-- The event engine introduces controlled uncertainty.
-- Monte Carlo resolution aggregates uncertainty into usable probabilities.
+- The neural model estimates baseline pace.
+- The explicit rules layer handles race mechanics that should stay visible.
+- The event engine introduces uncertainty.
+- Monte Carlo aggregation turns that uncertainty into distributions.
 
-This keeps the simulator explainable while still giving it a real modeling core.
+That split is the main architectural decision in the repo.
+
+## What is real and what is modeled
+
+Real 2026 season data in the current app:
+
+- team names
+- driver names
+- Grand Prix names
+- circuit names
+- calendar order
+- Sprint weekend flags
+
+Modeled or estimated data in the current app:
+
+- team performance priors
+- driver performance priors
+- circuit behavior weights
+- event priors
+- strategy scores
 
 ## Current realism boundary
 
-The architecture supports meaningful scenario exploration without pretending to deliver lap-perfect race reconstruction.
+The current architecture supports useful Grand Prix scenario work, but it is not yet:
 
-Today the simulator is:
-
-- event-aware
-- stint-aware
-- strategy-aware
-- probability-driven
-
-It is not yet:
-
-- full lap-by-lap physics
+- lap-by-lap race simulation
 - standalone qualifying-session simulation
-- calibrated to real telemetry or race control logs
+- calibrated to official telemetry or race-control logs
+- driven by a full historical results ingestion pipeline
 
-## Extension points
-
-The current code structure is already suitable for:
-
-- qualifying simulation and grid generation
-- richer weather transitions by lap window
-- pit-stop optimization
-- teammate interactions
-- calibration against real historical data
-- more granular restart and bunching behavior
-
-Those additions can be layered on top of the current architecture without replacing the frontend or API surface.
+Those are potential extensions, not missing pieces in the current design.

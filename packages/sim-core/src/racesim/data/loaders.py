@@ -23,7 +23,7 @@ def _require_match(items: list[Any], attribute: str, value: str, entity: str):
     for item in items:
         if getattr(item, attribute) == value:
             return item
-    raise CatalogLookupError(f"{entity} '{value}' was not found in the sample catalog.")
+    raise CatalogLookupError(f"{entity} '{value}' was not found in the 2026 Formula 1 catalog.")
 
 
 @lru_cache(maxsize=1)

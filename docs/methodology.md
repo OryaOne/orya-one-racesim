@@ -2,77 +2,73 @@
 
 ## Purpose
 
-Orya One RaceSim is a hybrid simulation project. It is designed to make its assumptions visible rather than hide them behind a single opaque forecast.
+Orya One RaceSim is a hybrid 2026 Formula 1 simulation project. The idea is simple: learn the pace prior, keep the race mechanics explicit, and use probabilistic events where certainty would be fake.
 
-## Modeling philosophy
+## Modeling structure
 
-The system separates three kinds of logic:
+The simulator separates three kinds of logic:
 
-1. what can be learned as a pace prior
-2. what should remain explicit motorsport logic
-3. what should remain probabilistic uncertainty
+1. learned pace prior
+2. explicit race and strategy logic
+3. probabilistic race-control uncertainty
 
-That separation is the core design principle behind the simulator.
+That boundary is deliberate and shows up across the whole codebase.
 
-## 1. Neural pace prior
+## 1. Pace prior
 
-The neural component is a compact PyTorch MLP trained on synthetic tabular samples in `data/model/training_samples.csv`.
+The neural component is a compact PyTorch MLP trained on tabular samples in `data/model/training_samples.csv`.
 
 It estimates a baseline pace prior from features such as:
 
 - recent form
 - qualifying strength
 - tire management
-- overtaking ability
+- overtaking strength
 - consistency
 - aggression
 - wet-weather skill
 - reliability
-- track tire stress
+- circuit tire stress
 - overtaking difficulty
-- track-position importance
+- track-position weight
 - fuel sensitivity
 - normalized pit loss
 - weather risk
 
 Important boundary:
 
-- the model does not directly predict the finishing order
-- it provides the pace signal for the broader race simulation
+- the model does not predict finishing order directly
+- it only supplies the starting pace signal for the wider race simulation
 
-## 2. Deterministic race logic
+## 2. Explicit race logic
 
-Explicit logic is used where assumptions should remain visible:
+The deterministic layer handles what should stay visible:
 
-- tire degradation pressure
-- fuel sensitivity
-- qualifying and track-position leverage
+- qualifying leverage
+- tire degradation
 - pit-loss cost
-- team pit efficiency
+- fuel sensitivity
 - reliability pressure
+- team pit efficiency
+- deployment sensitivity
 - strategy-template interactions
 
-This keeps the simulator explainable and easier to calibrate later.
+For the 2026 release, the race logic also introduces circuit-specific deployment and active-aero framing where it matters, especially on tracks such as Monza, Baku, Shanghai, and Las Vegas.
 
 ## 3. Strategy engine
 
-The strategy engine evaluates templates against:
+The strategy engine scores plans against:
 
+- qualifying importance
 - track-position pressure
-- overtaking bandwidth
-- tire-stress profile
-- weather pressure
+- tire stress
 - safety-car pressure
-- driver traits such as tire management and consistency
+- weather risk
+- Sprint-weekend context
+- deployment sensitivity
+- driver traits such as tire management, consistency, and energy management
 
-Each recommendation returns:
-
-- strategy selection
-- risk profile
-- rationale bullets
-- tradeoff statement
-
-The aim is coherent, scenario-specific strategy logic rather than a fake optimizer.
+The strategy layer is still abstract, but it is structured so it can become more realistic without changing the surrounding app.
 
 ## 4. Event engine
 
@@ -84,66 +80,68 @@ The event engine introduces controlled uncertainty through:
 - VSCs
 - safety cars
 - red flags
-- local incidents
+- incidents
 - DNFs
 - late-race disruptions
 
-These events influence:
+Those events influence:
 
-- overtaking bandwidth
 - degradation pressure
 - pit-stop value
-- reliability exposure
+- overtaking bandwidth
+- deployment pressure
 - finish-position variance
 
 ## 5. Monte Carlo aggregation
 
 Each request resolves many independent races and aggregates:
 
-- expected finish position
+- expected finish
 - finish distributions
-- win / podium / top-10 probabilities
+- win probability
+- podium probability
+- points probability
+- expected points
 - DNF probability
-- strategy success rate
-- confidence labels
-- event-impact summary
+- strategy success
 - team-level outlook
+- race-control impact
 
-The output should be read as a probability map for the configured scenario, not as a deterministic prediction.
+The output should be read as a probability map for the configured weekend, not as a single deterministic prediction.
 
-## 6. Explainability
+## 6. Data posture
 
-Driver explanations are built from real simulation signals such as:
+The current release uses real 2026 Formula 1 entities:
 
-- qualifying leverage
-- strategy fit
-- tire-risk exposure
-- weather adaptability
-- incident exposure
-- event pressure
+- teams
+- drivers
+- Grands Prix
+- circuit names
+- Sprint weekends
 
-The product avoids generic AI-style wording in favor of short, simulation-grounded statements.
+The current release also uses modeled priors:
+
+- team pace assumptions
+- driver performance assumptions
+- circuit behavior weights
+- event priors
+
+This keeps the app immediately usable while making it clear what is factual season structure and what is simulator input.
 
 ## Current MVP simplifications
 
-The current version is intentionally bounded:
+The current build is still intentionally bounded:
 
-- event-aware and stint-aware rather than full lap-by-lap
-- qualifying influence is modeled inside race performance rather than via a separate session simulator
-- safety-car behavior is abstracted into compression and pit-value effects
-- sample data is synthetic and intended for replacement later
+- race resolution is event-aware and stint-aware rather than full lap-by-lap
+- qualifying influence is part of race performance rather than a separate session engine
+- deployment and active-aero behavior are represented as scenario weights instead of detailed system simulation
+- points and Sprint handling are weekend-aware, but still simplified
 
-These are explicit MVP boundaries, not caveats buried in the fine print.
+## Likely next steps
 
-## Future realism path
-
-Likely next steps:
-
-- standalone qualifying simulation
-- richer weather transitions by lap window
-- pit-stop optimization and undercut / overcut search
-- calibration against historical outcomes
-- teammate interactions
-- more detailed restart behavior
-
-The existing architecture already supports those upgrades without needing a rewrite.
+- standalone qualifying and Q3 probability outputs
+- deeper Sprint-weekend handling
+- richer lap-window weather and crossover logic
+- pit-stop optimization
+- calibration against historical Formula 1 data
+- teammate interactions and team-order constraints

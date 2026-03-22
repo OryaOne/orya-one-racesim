@@ -4,19 +4,19 @@ This guide is meant to make screenshot capture and short demo recording consiste
 
 ## Best default demo scenario
 
-Use the `Harbor volatility` preset in the simulator.
+Use the `Spa weather swing` preset in the simulator.
 
 Why:
 
-- mixed conditions make the event-impact cards easier to read
+- mixed conditions make the race-control cards easier to read
 - strategy recommendations separate more clearly
-- the results table shows more variation in confidence and exposure
+- the results table shows more variation in points, confidence, and exposure
 - the charts move more than they do in a low-volatility dry scenario
 
 ## Recommended capture order
 
 1. Landing page hero
-2. Simulator with `Harbor volatility` preset loaded before run
+2. Simulator with `Spa weather swing` preset loaded before run
 3. Simulator results hero after running the scenario
 4. Event-impact summary and disruption chart
 5. Expected order table
@@ -26,7 +26,7 @@ Why:
 If you create a short GIF, this is the best sequence:
 
 1. open simulator
-2. click `Harbor volatility`
+2. click `Spa weather swing`
 3. run simulation
 4. pause on the result hero and expected order table
 
@@ -34,17 +34,17 @@ If you create a short GIF, this is the best sequence:
 
 ### Primary demo
 
-- Preset: `Harbor volatility`
-- Grand Prix: `Rainford Harbor Grand Prix`
-- Weather: `Mixed Conditions`
+- Preset: `Spa weather swing`
+- Grand Prix: `Belgian Grand Prix`
+- Weather: `Rain crossover threat`
 - Runs: `1200`
 - Complexity: `High`
 
 ### Secondary demo
 
-- Preset: `Street-track control`
-- Grand Prix: `Azure Coast Grand Prix`
-- Weather: `Dry Stable`
+- Preset: `Monaco track position`
+- Grand Prix: `Monaco Grand Prix`
+- Weather: `Dry baseline`
 - Runs: `900`
 
 Use the secondary demo if you want a calmer screenshot with a stronger track-position story.

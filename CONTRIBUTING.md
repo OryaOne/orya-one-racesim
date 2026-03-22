@@ -2,23 +2,24 @@
 
 Thanks for contributing to Orya One RaceSim.
 
-This repository is meant to feel like a finished open-source project, not a loose prototype. Contributions should keep that standard across the UI, simulation logic, API behavior, docs, and repo presentation.
+The current project is a 2026 Formula 1 Grand Prix simulator with real season entities and modeled priors on top of them. Changes should keep that framing clear.
 
 ## Principles
 
-- Keep the product clear, grounded, and public-repo safe.
-- Do not introduce copyrighted team marks, official race branding, or protected series assets.
-- Prefer explainable simulation logic over opaque claims.
-- Keep the UX disciplined: technical, calm, and readable.
-- Document meaningful modeling assumptions and tradeoffs.
+- Keep the product grounded and technically honest.
+- Do not add copyrighted logos, team marks, or official race graphics.
+- Prefer readable simulation logic over hidden complexity.
+- Keep the UI dense, calm, and easy to scan.
+- Document meaningful modeling assumptions when you change them.
 
 ## Good contribution areas
 
-- simulation realism improvements that do not bloat the architecture
-- UI refinement that improves clarity or trust
-- better scenario presets, demo readiness, or docs quality
-- data-pipeline improvements and schema documentation
-- tests, validation, and developer-experience polish
+- better strategy and event logic
+- circuit or season data improvements
+- qualifying and Sprint-weekend extensions
+- UI clarity improvements
+- tests, validation, and developer-experience work
+- documentation that makes the model easier to understand
 
 ## Local setup
 
@@ -55,7 +56,7 @@ make build-web
 make check
 ```
 
-## Expected checks before opening a PR
+## Checks before opening a PR
 
 ```bash
 pytest
@@ -65,30 +66,30 @@ cd apps/web && npm run build
 
 ## API test note
 
-`apps/api/tests/test_api.py` skips cleanly if `fastapi` is not installed in the active interpreter. If you installed dependencies from `apps/api/requirements.txt`, the API tests should run normally.
+`apps/api/tests/test_api.py` skips if `fastapi` is not installed in the active interpreter. If you install dependencies from `apps/api/requirements.txt`, the API tests should run normally.
 
-## Pull request standards
+## Pull request guidance
 
-Please keep pull requests focused and concrete.
+Keep pull requests focused.
 
-Include:
+Please include:
 
 - what changed
-- why it improves the product or codebase
-- any modeling assumptions introduced or changed
+- why it improves the project
+- any new modeling assumptions
 - validation performed
 - screenshots for visible UI changes
 
 ## Documentation expectations
 
-If you change any of the following, update docs in the same PR when appropriate:
+If you change any of the following, update docs in the same PR when it makes sense:
 
+- season data
 - simulation assumptions
-- dataset fields
 - setup instructions
-- public-facing product framing
-- roadmap positioning
+- public-facing copy
+- roadmap direction
 
 ## Scope discipline
 
-Avoid large speculative rewrites. The project improves best through coherent, well-argued refinements rather than broad redesigns.
+Avoid broad rewrites unless they solve a real structural problem. The project improves best through clear, well-argued increments.

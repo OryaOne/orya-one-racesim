@@ -1,6 +1,8 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+import { catalogFallback } from "@/lib/catalog-fallback";
+
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 export const preferredRegion = "iad1";
@@ -27,25 +29,48 @@ async function forward(request: NextRequest, path: string[], method: "GET" | "PO
     headers.set("content-type", contentType);
   }
 
-  const response = await fetch(url, {
-    method,
-    headers,
-    body: method === "POST" ? await request.text() : undefined,
-    cache: "no-store",
-  });
+  try {
+    const response = await fetch(url, {
+      method,
+      headers,
+      body: method === "POST" ? await request.text() : undefined,
+      cache: "no-store",
+      signal: AbortSignal.timeout(method === "GET" ? 8000 : 25000),
+    });
 
-  const text = await response.text();
-  const responseHeaders = new Headers();
-  const responseType = response.headers.get("content-type");
+    const text = await response.text();
+    const responseHeaders = new Headers();
+    const responseType = response.headers.get("content-type");
 
-  if (responseType) {
-    responseHeaders.set("content-type", responseType);
+    if (responseType) {
+      responseHeaders.set("content-type", responseType);
+    }
+
+    return new NextResponse(text, {
+      status: response.status,
+      headers: responseHeaders,
+    });
+  } catch (error) {
+    if (method === "GET" && path.join("/") === "defaults") {
+      return NextResponse.json(catalogFallback, {
+        status: 200,
+        headers: {
+          "x-racesim-fallback": "catalog",
+          "x-racesim-fallback-reason": error instanceof Error ? error.name : "unknown",
+        },
+      });
+    }
+
+    return NextResponse.json(
+      {
+        detail:
+          error instanceof Error
+            ? error.message
+            : "The RaceSim API request failed before the backend responded.",
+      },
+      { status: 504 },
+    );
   }
-
-  return new NextResponse(text, {
-    status: response.status,
-    headers: responseHeaders,
-  });
 }
 
 export async function GET(

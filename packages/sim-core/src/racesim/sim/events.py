@@ -18,6 +18,7 @@ class RaceEvents:
     late_incident: bool
     degradation_multiplier: float
     overtaking_window: float
+    energy_management_multiplier: float
     pit_discount: float
     event_pressure: float
     narrative: list[str]
@@ -48,14 +49,21 @@ class EventEngine:
             + max(env.virtual_safety_cars, weather.vsc_probability) * 0.22
             + max(env.full_safety_cars, weather.safety_car_probability) * 0.22
             + env.crashes * 0.1
-        ) * (0.92 + track.track_position_importance * 0.25)
+        ) * (
+            0.88
+            + track.track_position_importance * 0.18
+            + track.safety_car_risk * 0.22
+            + (0.08 if track.circuit_type == "street" else 0.03 if track.circuit_type == "semi-street" else 0.0)
+        )
         yellow_flag = self.rng.random() < min(0.86, caution_pressure * complexity_multiplier)
 
-        vsc_probability = max(env.virtual_safety_cars, weather.vsc_probability) * (0.72 + track.overtaking_difficulty * 0.18)
+        vsc_probability = max(env.virtual_safety_cars, weather.vsc_probability) * (
+            0.72 + track.overtaking_difficulty * 0.18 + track.safety_car_risk * 0.1
+        )
         vsc = yellow_flag and self.rng.random() < min(0.74, vsc_probability * complexity_multiplier)
 
         safety_car_probability = (
-            max(env.full_safety_cars, weather.safety_car_probability)
+            max(env.full_safety_cars, weather.safety_car_probability, track.safety_car_risk)
             * (0.76 + track.track_position_importance * 0.2)
             * (1.0 + 0.2 * int(wet_start or weather_shift))
         )
@@ -71,29 +79,36 @@ class EventEngine:
         )
 
         degradation_multiplier = 1.0
-        overtaking_window = 1.0
+        overtaking_window = 1.0 + track.energy_sensitivity * 0.05 - track.overtaking_difficulty * 0.04
+        energy_management_multiplier = 1.0
         pit_discount = 1.0
         narrative: list[str] = []
 
         if wet_start:
             degradation_multiplier += 0.08
             overtaking_window -= 0.06
-            narrative.append("the race starts on a compromised grip baseline")
+            energy_management_multiplier += 0.04
+            narrative.append("the race starts with reduced grip and a less stable deployment picture")
         if weather_shift:
             degradation_multiplier += 0.12
             overtaking_window -= 0.08
+            energy_management_multiplier += 0.08
             narrative.append("a mid-race weather crossover increases strategy timing pressure")
         if safety_car:
             pit_discount -= 0.17
+            energy_management_multiplier -= 0.03
             narrative.append("a safety-car phase compresses gaps and lowers the cost of stopping")
         elif vsc:
             pit_discount -= 0.08
+            energy_management_multiplier -= 0.02
             narrative.append("VSC exposure modestly improves opportunistic pit timing")
         if red_flag:
             degradation_multiplier -= 0.04
+            energy_management_multiplier -= 0.05
             narrative.append("a red flag resets tire age pressure more than a normal caution window")
         if late_incident:
             overtaking_window -= 0.05
+            energy_management_multiplier += 0.05
             narrative.append("late-race disruption raises closing-lap volatility")
 
         event_pressure = min(
@@ -115,6 +130,7 @@ class EventEngine:
             late_incident=late_incident,
             degradation_multiplier=degradation_multiplier,
             overtaking_window=max(0.78, overtaking_window),
+            energy_management_multiplier=max(0.82, energy_management_multiplier),
             pit_discount=max(0.72, pit_discount),
             event_pressure=event_pressure,
             narrative=narrative,
@@ -148,6 +164,7 @@ class EventEngine:
             + driver.aggression / 260.0
             + (1.0 - driver.consistency / 100.0) * 0.12
             + track.overtaking_difficulty * 0.06
+            + track.safety_car_risk * 0.05
             + events.event_pressure * 0.08,
         )
         time_loss = 0.0

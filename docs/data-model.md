@@ -1,104 +1,139 @@
 # Data Model
 
-The repository ships with synthetic sample data so Orya One RaceSim works immediately after clone, without authentication, external APIs, or proprietary feeds.
+The repository now ships with a real 2026 Formula 1 season structure and modeled performance priors on top of it.
+
+That means two things are true at once:
+
+- the teams, drivers, Grands Prix, circuit names, and Sprint weekends are real 2026 entities
+- the pace, strategy, circuit-behavior, and event weights are still simulator inputs
 
 ## Design goals
 
-The sample-data layer is designed to:
+The data layer is designed to:
 
-- make the product runnable on first setup
-- keep fields understandable and well-documented
-- provide a clean seam for future real-data replacement
-- avoid copyrighted or official motorsport branding
+- make the app runnable immediately
+- separate factual season structure from modeled priors
+- keep fields clear enough to replace later with richer data
+- avoid copyrighted logos or official visual assets
 
 ## Files and purpose
 
+### `data/drivers/teams.json`
+
+Team-level metadata for the 2026 grid.
+
+Key fields:
+
+- `name`
+- `pit_crew_efficiency`
+- `reliability_base`
+- `race_pace`
+- `qualifying_pace`
+- `energy_efficiency`
+
 ### `data/drivers/drivers.json`
 
-Driver-level synthetic attributes used by the pace prior, strategy evaluation, and event-exposure logic.
+Driver-level priors for the 2026 grid.
 
-Key fields include:
+Key fields:
 
+- `team_id`
+- `car_number`
 - `recent_form`
 - `qualifying_strength`
 - `tire_management`
 - `overtaking`
 - `consistency`
 - `aggression`
+- `energy_management`
 - `wet_weather_skill`
 - `reliability`
 
-### `data/drivers/teams.json`
-
-Team-level metadata used for:
-
-- display identity
-- pit-crew efficiency
-- baseline reliability contribution
-
 ### `data/tracks/grands_prix.json`
 
-Track and event metadata used by both strategy and simulation layers, including:
+The 2026 Grand Prix calendar plus circuit behavior metadata.
 
-- race distance
-- overtaking difficulty
-- tire stress
-- fuel sensitivity
-- pit-loss delta
-- track-position importance
-- weather volatility
-- surface evolution
+Key fields:
+
+- `calendar_round`
+- `circuit_name`
+- `circuit_type`
+- `sprint_weekend`
+- `homologation_note`
+- `overtaking_difficulty`
+- `tire_stress`
+- `pit_loss_seconds`
+- `track_position_importance`
+- `qualifying_importance`
+- `weather_volatility`
+- `safety_car_risk`
+- `strategy_flexibility`
+- `energy_sensitivity`
+- `degradation_profile`
 
 ### `data/strategies/strategy_templates.json`
 
-Abstract strategy templates with fields for:
+Abstract Formula 1-style strategy templates.
 
-- compound sequence
-- pit windows
-- aggression
-- flexibility
-- tire-load bias
-- track-position bias
-- safety-car bias
-- weather adaptability
+Key fields:
 
-These are intentionally abstract enough for an MVP while still being coherent and scenario-aware.
+- `compound_sequence`
+- `pit_windows`
+- `aggression`
+- `flexibility`
+- `track_position_bias`
+- `qualifying_bias`
+- `energy_bias`
+- `safety_car_bias`
+- `weather_adaptability`
 
 ### `data/weather/weather_event_priors.json`
 
-Weather and event presets that seed:
+Weekend weather and race-control presets used to seed event generation.
 
-- dry bias
-- rain-onset probability
-- temperature variation
-- yellow / VSC / safety-car probabilities
-- red-flag probability
-- baseline DNF pressure
+Key fields:
+
+- `dry_bias`
+- `rain_onset_probability`
+- `track_evolution`
+- `temperature_variation`
+- `yellow_flag_probability`
+- `vsc_probability`
+- `safety_car_probability`
+- `red_flag_probability`
+- `dnf_probability`
 
 ### `data/model/training_samples.csv`
 
-Synthetic tabular samples used for pace-model training. The file is intentionally easy to inspect so contributors can understand the feature path and replace it later with richer real-world data.
+Synthetic tabular samples used for the pace model.
 
-## Demo presets
+This file is still synthetic even though the main season catalog is now real 2026 Formula 1 structure.
 
-The simulator UI includes a few demo presets built on top of the sample data:
+## What is factual vs modeled
 
-- Harbor volatility
-- Street-track control
-- Thermal deg pressure
+Factual season structure:
 
-These are designed for demos, screenshots, and consistent evaluation passes.
+- the 2026 teams
+- the 2026 drivers
+- the 2026 Grand Prix calendar
+- circuit naming
+- Sprint-weekend flagging
 
-## Real-data replacement path
+Modeled simulator inputs:
 
-The intended progression for future data work is:
+- performance priors
+- circuit pressure weights
+- event probabilities
+- strategy scores
 
-1. preserve the current logical field contracts where possible
-2. build ingestion and normalization pipelines that populate the same structures
-3. retrain the pace prior on upgraded feature tables
-4. calibrate deterministic and event-engine logic against historical outcomes
+## Replacement path
 
-This helps future realism work land incrementally instead of forcing a rewrite.
+If the project moves to richer data later, the most natural path is:
+
+1. keep the current field contracts where possible
+2. replace estimated priors with normalized real-world inputs
+3. retrain the pace model on upgraded feature tables
+4. calibrate deterministic and event logic against historical race outcomes
 
 ## Canonical field reference
 

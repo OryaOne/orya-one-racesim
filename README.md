@@ -1,42 +1,135 @@
 # Orya One RaceSim
 
-![Status](https://img.shields.io/badge/status-public%20mvp-0f172a?style=flat-square)
+![Status](https://img.shields.io/badge/status-2026%20season%20mvp-0f172a?style=flat-square)
 ![Next.js](https://img.shields.io/badge/Next.js-15-111111?style=flat-square&logo=next.js)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-0f766e?style=flat-square&logo=fastapi)
 ![Python](https://img.shields.io/badge/Python-3.11+-1d4ed8?style=flat-square&logo=python)
 ![License](https://img.shields.io/badge/license-MIT-b45309?style=flat-square)
 
-Orya One RaceSim is an open-source Grand Prix race simulator built for scenario analysis. It combines a neural pace prior, deterministic race and strategy logic, dynamic event simulation, and Monte Carlo aggregation in a web app that is meant to be useful, inspectable, and easy to extend.
+Orya One RaceSim is an open-source 2026 Formula 1 Grand Prix simulator built for scenario analysis. It combines a small neural pace prior, explicit race and strategy logic, a race-control event layer, and Monte Carlo aggregation in a web app that is meant to be inspectable and easy to extend.
 
-It is not trying to look like a betting product or a fan dashboard. The project exists to explore a more grounded approach: clear assumptions, believable abstractions, and outputs that are easier to reason about.
+The current release is built around the real 2026 Formula 1 season structure:
+
+- 11 teams
+- 22 drivers
+- the 24-round Grand Prix calendar
+- Sprint weekend flagging where relevant
+
+The model inputs layered on top of that season frame are still estimated. The app uses real 2026 entities, but it is not claiming access to official timing, telemetry, or private team data.
+
+## What the app does
+
+- choose any 2026 Formula 1 Grand Prix
+- review the circuit profile and weekend context
+- tune race control, weather, tire, and variance assumptions
+- assign or compare strategy plans
+- run Monte Carlo race simulations
+- inspect win, podium, points, finish-position, and DNF probabilities
+- read short driver and event summaries tied to real simulation outputs
 
 ## Why this project exists
 
-Most public motorsport simulators fall into one of three buckets:
+Most public motorsport simulators either hide their assumptions or stay too shallow to be useful for scenario work.
 
-- toy products with noisy UI and weak assumptions
-- static dashboards with little real scenario value
-- black-box predictors that hide how the result was produced
+This project takes a different path:
 
-This project takes a different approach:
-
-- a small neural network estimates a pace prior
+- a neural model estimates baseline pace
 - deterministic logic handles the race mechanics that should stay explicit
 - an event engine introduces believable uncertainty
-- Monte Carlo aggregation turns everything into probability distributions, not hard claims
+- Monte Carlo aggregation turns everything into distributions instead of hard claims
 
-The current MVP focuses on being coherent and extensible first, with a clear path to deeper realism later.
+The point is not to produce a magic prediction. The point is to make the assumptions clear enough that the result can be challenged, tuned, and improved.
 
-## Feature highlights
+## 2026 Formula 1 focus
 
-- Simulator workspace with grouped control layers
-- Grand Prix selection, weather presets, and event-pressure tuning
-- Strategy assignment plus scenario-aware strategy recommendations
-- Driver-level adjustments for controlled experimentation
-- Monte Carlo results for win, podium, top-10, DNF, and expected finish
-- Event-impact summaries and confidence signals
-- Team-level outlook and explainability cards
-- Original branding and synthetic public-safe sample data
+The current build is no longer a generic motorsport demo. It is framed directly around the 2026 Formula 1 season, including:
+
+- real 2026 teams and drivers
+- official 2026 Grand Prix naming
+- circuit-specific behavior across the full calendar
+- Sprint weekend handling in the catalog and scenario layer
+- 2026-aware language around deployment, active aero, and overtaking support
+
+Examples of track-specific behavior already modeled:
+
+- Monaco is heavily qualifying and track-position driven
+- Monza puts more weight on deployment and low-drag race shape
+- Singapore carries higher interruption pressure
+- Spa has stronger weather variability
+- Zandvoort is harder to pass
+- Baku has more restart and safety-car volatility
+- Las Vegas leans low-grip and straight-line sensitive
+
+## Hybrid simulation overview
+
+### Pace prior
+
+A compact PyTorch MLP estimates a baseline pace prior from driver and circuit features.
+
+It does not predict the finishing order directly.
+
+### Deterministic race logic
+
+The explicit rules layer models:
+
+- qualifying leverage
+- tire degradation
+- pit-loss delta
+- fuel sensitivity
+- reliability pressure
+- deployment sensitivity
+- strategy-template tradeoffs
+
+### Strategy engine
+
+The strategy layer scores templates against:
+
+- track position pressure
+- qualifying importance
+- tire stress
+- safety-car pressure
+- weather risk
+- deployment sensitivity
+- driver strengths such as tire management and consistency
+
+### Event engine
+
+The event layer models:
+
+- wet starts
+- weather shifts
+- yellow flags
+- VSCs
+- safety cars
+- red flags
+- incidents
+- DNFs
+- late-race disruptions
+
+### Monte Carlo output
+
+The simulator aggregates:
+
+- finish distributions
+- win probability
+- podium probability
+- points probability
+- expected points
+- DNF probability
+- strategy success
+- event-impact summary
+- constructors outlook
+
+## Current realism boundary
+
+This is still an MVP. A few important pieces are simplified on purpose:
+
+- race resolution is event-aware and stint-aware rather than full lap-by-lap
+- qualifying influence is modeled inside race performance instead of through a separate session simulator
+- 2026 deployment and active-aero behavior are represented as scenario levers, not detailed control laws
+- team and driver priors are estimated rather than learned from full 2026 race datasets
+
+Those are explicit boundaries, not hidden caveats.
 
 ## Quick start
 
@@ -73,323 +166,84 @@ make dev-api
 make dev-web
 ```
 
-The frontend targets `http://localhost:8000/api` by default.
+The frontend targets `http://localhost:8000/api` by default in local development.
 
-## Demo-ready simulator presets
+## Demo presets
 
-The simulator includes a few presets intended for screenshots and walkthroughs:
+The simulator includes a few preset weekends intended for demos and screenshots:
 
-- `Harbor volatility`
-- `Street-track control`
-- `Thermal deg pressure`
+- `Spa weather swing`
+- `Monaco track position`
+- `Monza deployment attack`
 
-The best all-around preset for demos is `Harbor volatility`. It usually gives the most readable mix of event activity, strategy variation, and chart movement.
-
-See [docs/demo-guide.md](docs/demo-guide.md) for exact capture guidance.
-
-## Product surfaces
-
-### Landing page
-
-Introduces the project and explains the hybrid model at a high level.
-
-### Simulator workspace
-
-Organized into five control groups:
-
-1. GP & Scenario
-2. Environment & Dynamic Events
-3. Strategy Controls
-4. Driver Adjustments
-5. Simulation Settings
-
-### Results dashboard
-
-Presents:
-
-- expected finishing order
-- confidence labels
-- strategy fit scores
-- event exposure
-- disruption summaries
-- recommendation cards
-- team outlook
-
-### Methodology page
-
-Explains the neural model, deterministic logic, event engine, Monte Carlo aggregation, and the main simplifications in the MVP.
-
-## Hybrid simulation overview
-
-### Neural pace model
-
-A compact PyTorch MLP estimates a baseline pace prior from tabular features such as:
-
-- recent form
-- qualifying strength
-- tire management
-- overtaking ability
-- consistency
-- wet-weather skill
-- reliability
-- track context
-
-Important boundary:
-
-- it does not directly predict finishing order
-- it provides the pace signal that the rest of the simulation builds on
-
-### Deterministic race logic
-
-The explicit rules layer models:
-
-- tire degradation
-- fuel sensitivity
-- qualifying and track-position leverage
-- pit-loss penalties
-- team pit efficiency
-- reliability pressure
-- strategy-template interactions
-
-### Strategy engine
-
-The strategy engine scores templates against the current scenario using:
-
-- track-position pressure
-- overtaking bandwidth
-- weather pressure
-- safety-car probability
-- tire stress
-- driver strengths such as tire management and consistency
-
-Each recommendation includes:
-
-- selected strategy
-- risk label
-- rationale bullets
-- tradeoff statement
-
-### Event engine
-
-The event engine models:
-
-- wet starts
-- weather shifts
-- yellow flags
-- VSCs
-- safety cars
-- red flags
-- local incidents
-- DNFs
-- late-race disruptions
-
-These alter degradation pressure, pit timing, reliability stress, and finish-position variance.
-
-### Monte Carlo engine
-
-The simulator runs many races and aggregates:
-
-- finish distributions
-- win / podium / top-10 probabilities
-- DNF rates
-- strategy success
-- uncertainty and confidence labels
-- event-impact summaries
-- team-level outlook
-
-## Architecture overview
+## Project structure
 
 ```text
 apps/
   api/        FastAPI service
   web/        Next.js frontend
 packages/
-  sim-core/   Simulation, model, strategy, and event logic
-data/         Sample catalogs, schemas, and training data
+  sim-core/   Shared simulation, strategy, event, and model code
+data/         2026 season catalogs, schemas, and training data
 docs/         Technical and release-facing documentation
 ```
 
-Further reading:
+## Documentation
 
 - [docs/architecture.md](docs/architecture.md)
 - [docs/methodology.md](docs/methodology.md)
 - [docs/data-model.md](docs/data-model.md)
+- [docs/roadmap.md](docs/roadmap.md)
 - [docs/demo-guide.md](docs/demo-guide.md)
 - [docs/deployment.md](docs/deployment.md)
 
-## Local development commands
-
-### Install
+## Development commands
 
 ```bash
-make setup
-```
-
-### Train the pace model artifact
-
-```bash
+make dev-api
+make dev-web
 make train-model
-```
-
-### Run checks
-
-```bash
-make check
-```
-
-### Individual commands
-
-```bash
 make test
 make lint-web
 make build-web
+make check
 ```
 
-## Environment configuration
+## Tests
 
-### API
+Primary checks:
 
-See [apps/api/.env.example](apps/api/.env.example).
+```bash
+pytest
+cd apps/web && npm run lint
+cd apps/web && npm run build
+```
 
-- `CORS_ORIGINS` accepts a comma-separated list of local frontend origins
+`apps/api/tests/test_api.py` skips cleanly if `fastapi` is not installed in the active interpreter.
 
-### Web
+## Roadmap
 
-See [apps/web/.env.example](apps/web/.env.example).
+Near-term work:
 
-- `NEXT_PUBLIC_API_URL` points the frontend at the FastAPI service
-
-## Deployment overview
-
-Recommended production setup:
-
-- frontend on Vercel
-- FastAPI backend deployed separately
-
-The frontend is already prepared to work with:
-
-- a hosted API URL in production via `NEXT_PUBLIC_API_URL`
-- a local API in development via the built-in fallback to `http://localhost:8000/api`
-
-Backend recommendation:
-
-- deploy the FastAPI service separately
-- easiest platform: Render
-
-Production variables:
-
-- Vercel: `NEXT_PUBLIC_API_URL=https://YOUR-API-HOST/api`
-- Backend: `CORS_ORIGINS=https://YOUR-FRONTEND-HOST`
-
-Exact deployment steps are in [docs/deployment.md](docs/deployment.md).
-
-## Vercel quick deploy
-
-1. Push the repository to GitHub.
-2. In Vercel, create a new project from the repo.
-3. Set `Root Directory` to `apps/web`.
-4. Add `NEXT_PUBLIC_API_URL` in Project Settings.
-5. Set it to your deployed backend URL with `/api` at the end.
-6. Deploy.
-
-Do not leave `NEXT_PUBLIC_API_URL` unset in production. The frontend now throws a clear error if it is missing.
-
-## Verification and test notes
-
-Verified locally with:
-
-- `pytest`
-- `cd apps/web && npm run lint`
-- `cd apps/web && npm run build`
-
-Note on API tests:
-
-- `apps/api/tests/test_api.py` uses `pytest.importorskip("fastapi")`
-- if FastAPI is not installed in the active Python environment, the API test module skips cleanly
-- once `apps/api/requirements.txt` is installed, the API path runs normally
-
-## Suggested screenshots
-
-Recommended captures for the README or a launch post:
-
-1. Landing page hero on desktop
-2. Simulator control column with `Harbor volatility` preset loaded
-3. Results dashboard with event-impact cards and expected order table visible
-4. Strategy recommendation panel plus explainability cards
-5. Methodology page overview
-
-See [docs/demo-guide.md](docs/demo-guide.md) for exact scenario settings, viewport guidance, and capture order.
-
-## Screenshot / demo placeholders
-
-Suggested README placement once assets exist:
-
-- `assets/readme/landing-overview.png`
-- `assets/readme/simulator-controls.png`
-- `assets/readme/results-dashboard.png`
-- `assets/readme/strategy-and-explainability.png`
-
-Suggested demo additions:
-
-- short GIF of switching presets and running a simulation
-- 30 to 60 second walkthrough clip
-
-## Project status
-
-Current status: `public MVP`
-
-What that means:
-
-- the app is in good shape for a public repo and live demo
-- the modeling approach is documented and internally consistent
-- the realism level is useful for scenario exploration, but still limited
-- the codebase is structured so realism can be improved without a rewrite
-
-## Current limitations
-
-- sample data is synthetic and not calibrated to real telemetry
-- race resolution is event-aware and stint-aware, not full lap-by-lap simulation
-- qualifying is modeled as an influence factor, not a standalone session engine
-- safety-car behavior is abstracted into pit-value and compression effects
-- strategy recommendations are scenario-aware but not exhaustive optimization outputs
-
-These are deliberate MVP boundaries, not things the project is trying to hide.
-
-## Future realism improvements
-
-Short-term:
-
-- qualifying simulation and grid generation
+- qualifying-session simulation
+- deeper Sprint-weekend handling
 - richer weather transitions by lap window
-- pit-stop optimization and undercut / overcut search
+- better pit-stop optimization and undercut / overcut search
+- calibration against historical Formula 1 data
 
-Mid-term:
+Longer-term work:
 
-- calibration against historical data
-- teammate interactions
-- richer restart and bunching behavior
-- benchmark and evaluation workflows
-
-Longer-term:
-
-- lap-by-lap simulation mode
-- deeper explainability by stint
-- multi-race comparison mode
-
-See [docs/roadmap.md](docs/roadmap.md).
+- lap-by-lap race mode
+- teammate interactions and team-order logic
+- restart behavior and bunching detail
+- benchmark and calibration workflows
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidance, expected checks, and pull request standards.
+Contributions are welcome. Please keep them focused, well-tested, and documented.
 
-## Changelog
-
-The first public-release scaffold is in [CHANGELOG.md](CHANGELOG.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, expectations, and PR guidance.
 
 ## License
 
-Released under the [MIT License](LICENSE).
-
-## Research notice
-
-Orya One RaceSim is a research/demo simulator. It is not a guaranteed predictor of real race outcomes and is not intended for wagering, betting, or unauthorized use of protected motorsport branding.
+[MIT](LICENSE)

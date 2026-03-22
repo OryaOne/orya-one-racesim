@@ -3,35 +3,44 @@
     "path": "data/drivers/drivers.json",
     "fields": {
       "id": "Stable driver identifier",
-      "name": "Public-safe driver display name",
+      "name": "Driver display name from the 2026 Formula 1 season",
       "team_id": "Foreign key into teams.json",
-      "car_number": "Display number",
-      "recent_form": "Synthetic recent performance proxy, 0-100",
-      "qualifying_strength": "Synthetic single-lap strength, 0-100",
-      "tire_management": "Synthetic long-run tire conservation, 0-100",
-      "overtaking": "Synthetic pass execution strength, 0-100",
-      "consistency": "Lap-to-lap stability proxy, 0-100",
-      "aggression": "Risk-taking and incident exposure proxy, 0-100",
-      "wet_weather_skill": "Mixed and wet-condition competence, 0-100",
-      "reliability": "Mechanical and execution robustness, 0-100"
+      "car_number": "Driver number",
+      "recent_form": "Estimated recent performance proxy, 0-100",
+      "qualifying_strength": "Estimated single-lap strength, 0-100",
+      "tire_management": "Estimated long-run tire conservation, 0-100",
+      "overtaking": "Estimated pass execution strength, 0-100",
+      "consistency": "Estimated lap-to-lap stability, 0-100",
+      "aggression": "Estimated risk-taking and incident exposure, 0-100",
+      "energy_management": "Estimated 2026 energy deployment discipline, 0-100",
+      "wet_weather_skill": "Estimated mixed and wet-condition competence, 0-100",
+      "reliability": "Estimated mechanical and execution robustness, 0-100"
     }
   },
   "teams": {
     "path": "data/drivers/teams.json",
     "fields": {
       "id": "Stable team identifier",
-      "name": "Original team name",
-      "color": "Brand-safe accent color",
+      "name": "2026 Formula 1 team name",
+      "color": "UI accent color",
       "pit_crew_efficiency": "Pit execution quality, 0-1",
-      "reliability_base": "Baseline reliability contribution, 0-1"
+      "reliability_base": "Baseline reliability contribution, 0-1",
+      "race_pace": "Estimated race-pace prior, 0-100 scale",
+      "qualifying_pace": "Estimated qualifying-pace prior, 0-100 scale",
+      "energy_efficiency": "Estimated 2026 power-unit and deployment efficiency, 0-1"
     }
   },
   "grands_prix": {
     "path": "data/tracks/grands_prix.json",
     "fields": {
-      "id": "Stable track identifier",
-      "name": "Original event name",
-      "country": "Fictional host market",
+      "id": "Stable Grand Prix identifier",
+      "name": "Official event name",
+      "circuit_name": "Circuit display name",
+      "country": "Host country",
+      "calendar_round": "Official round order",
+      "circuit_type": "Street, semi-street, or permanent classification",
+      "sprint_weekend": "Whether the weekend uses the Sprint format",
+      "homologation_note": "Optional circuit or regulatory note",
       "laps": "Nominal race distance in laps",
       "lap_length_km": "Circuit length in km",
       "base_race_time_sec": "Baseline total race time for simulation anchoring",
@@ -39,10 +48,15 @@
       "tire_stress": "Relative tire degradation pressure, 0-1",
       "fuel_sensitivity": "Fuel-load drag importance, 0-1",
       "pit_loss_seconds": "Typical pit delta",
-      "track_position_importance": "Grid position sensitivity, 0-1",
+      "track_position_importance": "How much clean air and position matter, 0-1",
+      "qualifying_importance": "How much Saturday pace matters for Sunday, 0-1",
       "weather_volatility": "Likelihood that conditions change, 0-1",
-      "surface_evolution": "Track improvement during the weekend, 0-1",
-      "summary": "Short track profile description"
+      "surface_evolution": "Track improvement through the weekend, 0-1",
+      "safety_car_risk": "Baseline interruption risk, 0-1",
+      "strategy_flexibility": "How open the race is to multiple viable plans, 0-1",
+      "energy_sensitivity": "How strongly the 2026 deployment model matters, 0-1",
+      "degradation_profile": "Simple tire-degradation label",
+      "summary": "Short circuit summary used in the UI"
     }
   },
   "strategy_templates": {
@@ -57,6 +71,8 @@
       "flexibility": "Ability to adapt to events, 0-1",
       "tire_load": "Wear exposure bias, 0-1",
       "track_position_bias": "Preference for defending track position, 0-1",
+      "qualifying_bias": "Bias toward qualifying-led race shapes, 0-1",
+      "energy_bias": "Bias toward stronger 2026 deployment usage, 0-1",
       "safety_car_bias": "Ability to exploit neutralizations, 0-1",
       "weather_adaptability": "Mixed-condition robustness, 0-1"
     }
@@ -93,9 +109,8 @@
       "track_position_importance": "Track-position sensitivity",
       "fuel_sensitivity": "Fuel sensitivity",
       "pit_loss_norm": "Pit delta normalized to 0-1 range",
-      "weather_risk": "Weather volatility/rain exposure proxy",
+      "weather_risk": "Weather volatility or rain exposure proxy",
       "target_pace": "Synthetic target label used for MLP training"
     }
   }
 }
-

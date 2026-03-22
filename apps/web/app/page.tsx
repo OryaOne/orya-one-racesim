@@ -3,9 +3,9 @@ import {
   ArrowRight,
   BrainCircuit,
   CloudSunRain,
+  Flag,
   GitBranch,
   LayoutDashboard,
-  ShieldCheck,
   Sigma,
 } from "lucide-react";
 
@@ -15,27 +15,27 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 const pillars = [
   {
-    title: "Qualifying and race pace prior",
-    text: "A compact PyTorch model estimates a baseline F1-style pace signal from structured driver, circuit, and condition features.",
+    title: "Real 2026 Formula 1 season frame",
+    text: "The app now uses the 2026 Formula 1 teams, drivers, Grand Prix calendar, and Sprint weekends as the base catalog.",
+    icon: Flag,
+  },
+  {
+    title: "Hybrid race model",
+    text: "A compact PyTorch pace prior is combined with explicit race logic for qualifying weight, tire wear, pit loss, and 2026 deployment pressure.",
     icon: BrainCircuit,
   },
   {
-    title: "Tire, fuel, and stint logic",
-    text: "Fuel load, tire degradation, qualifying influence, pit loss, and strategy-template tradeoffs stay explicit and inspectable.",
-    icon: Sigma,
-  },
-  {
     title: "Race control and Monte Carlo",
-    text: "Weather swings, safety cars, VSCs, DNFs, and late-race incidents are sampled repeatedly to produce outcome distributions instead of single-point picks.",
+    text: "Weather swings, VSCs, safety cars, red flags, incidents, and DNFs are sampled repeatedly so the result stays probabilistic instead of fixed.",
     icon: CloudSunRain,
   },
 ];
 
 const releaseSignals = [
-  "Formula 1 Grand Prix framing across qualifying, race pace, and pit strategy",
-  "Circuit profile, race control tuning, and stint-plan recommendations in one workspace",
-  "FastAPI + Next.js monorepo with a modular simulation core",
-  "Synthetic public-safe data today, with room for real race data later",
+  "24-round 2026 Formula 1 calendar with Sprint weekend flagging where relevant",
+  "22-driver, 11-team grid with real 2026 line-ups and estimated pace priors",
+  "Circuit-specific behavior for Monaco, Spa, Monza, Singapore, Baku, Las Vegas, and more",
+  "A strategy wall built around pit windows, track position, energy deployment, and race control risk",
 ];
 
 export default function HomePage() {
@@ -44,12 +44,12 @@ export default function HomePage() {
       <section className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
         <Card className="overflow-hidden border-primary/10 bg-transparent">
           <CardContent className="p-8 sm:p-10 lg:p-12">
-            <Badge>Formula 1 Grand Prix simulation</Badge>
-            <h1 className="mt-6 max-w-5xl font-display text-[clamp(3rem,7vw,6.4rem)] leading-[0.92] tracking-[-0.05em] text-white">
-              Pit-wall simulation for qualifying, race pace, tire degradation, and Grand Prix strategy.
+            <Badge>2026 Formula 1 Grand Prix simulation</Badge>
+            <h1 className="mt-6 max-w-5xl font-display text-[clamp(3rem,7vw,6.2rem)] leading-[0.92] tracking-[-0.05em] text-white">
+              A 2026 Formula 1 race strategy app for pace, tire degradation, deployment, and race control.
             </h1>
             <p className="mt-6 max-w-3xl text-lg leading-8 text-muted-foreground">
-              Orya One RaceSim is built around a Formula 1 race-weekend workflow: choose a Grand Prix, review the circuit, set race conditions, compare stint plans, and run large Monte Carlo projections from a strategy-wall style workspace.
+              Orya One RaceSim is built around a real Grand Prix workflow: choose a 2026 Formula 1 round, review the circuit, tune the race assumptions, compare strategy plans, and inspect probability-based outcomes from one strategy wall.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button asChild size="lg">
@@ -59,7 +59,7 @@ export default function HomePage() {
                 </Link>
               </Button>
               <Button asChild variant="secondary" size="lg">
-                <Link href="/methodology">Review race model</Link>
+                <Link href="/methodology">Read the model notes</Link>
               </Button>
             </div>
             <div className="mt-10 grid gap-3 sm:grid-cols-2">
@@ -74,42 +74,44 @@ export default function HomePage() {
 
         <Card className="border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))]">
           <CardHeader>
-            <Badge variant="warning">Strategy wall preview</Badge>
-            <CardTitle className="mt-4 text-2xl">A Grand Prix command center</CardTitle>
+            <Badge variant="warning">Live strategy wall layout</Badge>
+            <CardTitle className="mt-4 text-2xl">Built around a Grand Prix weekend</CardTitle>
             <CardDescription>
-              The simulator is organized around Grand Prix setup, race control assumptions, stint strategy, driver and team overrides, and race outcome projection.
+              The simulator is organized around circuit setup, race control assumptions, strategy planning, driver and team inputs, and race outcome projection.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="rounded-[18px] border border-primary/18 bg-slate-950/80 p-5">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Example Grand Prix</div>
-                  <div className="mt-1 font-display text-2xl text-white">Rainford Harbor Grand Prix</div>
+                  <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Example weekend</div>
+                  <div className="mt-1 font-display text-2xl text-white">Belgian Grand Prix</div>
                 </div>
                 <div className="rounded-[10px] border border-primary/20 bg-primary/10 px-4 py-2 text-xs uppercase tracking-[0.18em] text-primary">
-                  1200 runs
+                  Spa · 1200 runs
                 </div>
               </div>
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 <div className="rounded-[14px] border border-white/8 bg-white/[0.03] p-4">
-                  <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Pit-wall stance</div>
-                  <div className="mt-2 text-lg text-white">Flexible mixed strategy</div>
-                  <div className="mt-2 text-sm text-muted-foreground">Adaptive undercut and safety-car aware plans gain value as disruption rises.</div>
+                  <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Weekend pressure</div>
+                  <div className="mt-2 text-lg text-white">Weather and crossover timing</div>
+                  <div className="mt-2 text-sm text-muted-foreground">
+                    The strategy layer can react to rain cells, safety cars, and late-race interruptions instead of assuming a clean dry Sunday.
+                  </div>
                 </div>
                 <div className="rounded-[14px] border border-white/8 bg-white/[0.03] p-4">
-                  <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Race engineer view</div>
-                  <div className="mt-2 text-lg text-white">Podium and finish outlook</div>
+                  <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">2026-specific logic</div>
+                  <div className="mt-2 text-lg text-white">Deployment and active-aero framing</div>
                   <div className="mt-2 text-sm text-muted-foreground">
-                    The app focuses on finish distributions, strategy tradeoffs, and readable race-control risk.
+                    Circuits such as Monza, Baku, and Las Vegas now put more weight on energy release and overtaking windows than the earlier sample model did.
                   </div>
                 </div>
               </div>
               <div className="mt-5 grid gap-3 sm:grid-cols-3">
                 {[
-                  { label: "Qualifying model", value: "Pace baseline" },
-                  { label: "Stint logic", value: "Tire / fuel / pit" },
-                  { label: "Race control", value: "Safety car / VSC / weather" },
+                  { label: "Season data", value: "2026 grid + calendar" },
+                  { label: "Strategy layer", value: "Pit windows + undercut + SC" },
+                  { label: "Race model", value: "Pace + tire + deployment + events" },
                 ].map((item) => (
                   <div key={item.label} className="rounded-[14px] border border-white/8 bg-black/20 p-4">
                     <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{item.label}</div>
@@ -139,18 +141,18 @@ export default function HomePage() {
           <CardHeader>
             <div className="flex items-center gap-3">
               <LayoutDashboard className="h-5 w-5 text-primary" />
-              <CardTitle>Built like race operations software</CardTitle>
+              <CardTitle>Made to feel like race operations software</CardTitle>
             </div>
             <CardDescription>
-              Dense when needed, quiet when not. The UI is meant to feel closer to a pit-wall strategy screen than a generic SaaS dashboard.
+              The UI is meant to scan like a strategy wall, not a generic analytics dashboard.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 text-sm leading-7 text-muted-foreground">
             <p>
-              Grand Prix setup, stint strategy comparison, and race outcome interpretation sit in one workspace. You can adjust circuit conditions, inspect recommendations, and read race-control summaries without leaving the main flow.
+              Circuit profile, race-control tuning, strategy comparison, and driver-level outputs sit in one workspace. The intent is to make the tradeoffs readable while keeping the flow dense enough to feel useful.
             </p>
             <p>
-              The project works immediately with synthetic data, while the code structure leaves room for future calibration, qualifying simulation, and more detailed race logic.
+              For now the app still uses estimated priors rather than real telemetry or official timing feeds, but the season structure and weekend framing are now explicitly 2026 Formula 1.
             </p>
           </CardContent>
         </Card>
@@ -158,19 +160,19 @@ export default function HomePage() {
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
-              <ShieldCheck className="h-5 w-5 text-primary" />
-              <CardTitle>Structured for race-model iteration</CardTitle>
+              <GitBranch className="h-5 w-5 text-primary" />
+              <CardTitle>Set up for deeper realism later</CardTitle>
             </div>
             <CardDescription>
-              Built so the model, UI, and data layer can all be pushed further without a rewrite.
+              The current architecture keeps the UI, API, and simulator modular enough for future qualifying, calibration, and historical-data work.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-2">
             {[
-              "Hybrid modeling with explicit qualifying, tire, and race-event assumptions",
-              "FastAPI backend and typed Next.js frontend",
-              "Method docs for the race model, event engine, and roadmap",
-              "Sample circuit, driver, team, and strategy datasets",
+              "Real 2026 entities in the catalog, with estimated circuit and team priors",
+              "FastAPI backend with typed Next.js frontend contracts",
+              "Documented model notes, data model, and architecture",
+              "Simulation outputs for expected finish, points, podium, win, and disruption risk",
             ].map((item) => (
               <div key={item} className="rounded-[16px] border border-white/8 bg-black/20 p-4 text-sm leading-6 text-muted-foreground">
                 {item}
@@ -178,11 +180,11 @@ export default function HomePage() {
             ))}
             <div className="rounded-[16px] border border-primary/15 bg-primary/8 p-5 sm:col-span-2">
               <div className="flex items-center gap-3">
-                <GitBranch className="h-4 w-4 text-primary" />
-                <div className="text-[11px] uppercase tracking-[0.18em] text-primary">Engineering posture</div>
+                <Sigma className="h-4 w-4 text-primary" />
+                <div className="text-[11px] uppercase tracking-[0.18em] text-primary">Model posture</div>
               </div>
               <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                Clear setup, realistic limits, and modular code boundaries are treated as part of the product, not cleanup work for later.
+                Pace is learned, race mechanics stay explicit, and uncertainty is sampled. That boundary is deliberate and shows up throughout the product.
               </p>
             </div>
           </CardContent>

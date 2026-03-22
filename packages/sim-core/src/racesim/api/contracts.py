@@ -11,6 +11,7 @@ class SimulationWeights(BaseModel):
     driver_form_weight: float = Field(default=0.68, ge=0.0, le=1.0)
     qualifying_importance: float = Field(default=0.74, ge=0.0, le=1.0)
     overtaking_sensitivity: float = Field(default=0.57, ge=0.0, le=1.0)
+    energy_deployment_weight: float = Field(default=0.66, ge=0.0, le=1.0)
     pit_stop_delta_sensitivity: float = Field(default=0.61, ge=0.0, le=1.0)
     stochastic_variance: float = Field(default=0.52, ge=0.0, le=1.0)
     reliability_sensitivity: float = Field(default=0.46, ge=0.0, le=1.0)
@@ -22,6 +23,7 @@ class EnvironmentControls(BaseModel):
     rain_onset: float = Field(default=0.22, ge=0.0, le=1.0)
     track_evolution: float = Field(default=0.58, ge=0.0, le=1.0)
     temperature_variation: float = Field(default=0.44, ge=0.0, le=1.0)
+    energy_deployment_intensity: float = Field(default=0.62, ge=0.0, le=1.0)
     crashes: float = Field(default=0.16, ge=0.0, le=1.0)
     dnfs: float = Field(default=0.1, ge=0.0, le=1.0)
     yellow_flags: float = Field(default=0.21, ge=0.0, le=1.0)
@@ -44,7 +46,7 @@ class DriverOverride(BaseModel):
 
 class StrategySuggestionRequest(BaseModel):
     grand_prix_id: str
-    weather_preset_id: str = "dry-stable"
+    weather_preset_id: str = "dry-baseline"
     complexity_level: Literal["low", "balanced", "high"] = "balanced"
     environment: EnvironmentControls = Field(default_factory=EnvironmentControls)
     weights: SimulationWeights = Field(default_factory=SimulationWeights)
@@ -83,7 +85,9 @@ class DriverResult(BaseModel):
     win_probability: float
     podium_probability: float
     top_10_probability: float
+    points_probability: float
     dnf_probability: float
+    expected_points: float
     strategy_success_rate: float
     uncertainty_index: float
     confidence_label: Literal["Stable", "Measured", "Exposed", "High Variance"]
@@ -112,6 +116,7 @@ class TeamSummary(BaseModel):
     team_id: str
     team_name: str
     avg_expected_finish: float
+    expected_points: float
     combined_win_probability: float
     combined_podium_probability: float
 
@@ -123,6 +128,7 @@ class ScenarioSummary(BaseModel):
     weather_preset_name: str
     simulation_runs: int
     complexity_level: str
+    sprint_weekend: bool
     headline: str
     strategy_outlook: str
     event_outlook: str
