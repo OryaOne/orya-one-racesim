@@ -1,0 +1,17 @@
+{
+  "name": "orya-one-racesim",
+  "private": true,
+  "description": "Monorepo for Orya One RaceSim, a premium motorsport simulation platform",
+  "engines": {
+    "node": ">=20 <21"
+  },
+  "packageManager": "npm@10",
+  "workspaces": [
+    "apps/web"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev --workspace @orya-one/racesim-web",
+    "build:web": "npm run build --workspace @orya-one/racesim-web",
+    "lint:web": "npm run lint --workspace @orya-one/racesim-web"
+  }
+}

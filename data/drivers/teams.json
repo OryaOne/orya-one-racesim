@@ -1,0 +1,45 @@
+[
+  {
+    "id": "aureline-gp",
+    "name": "Aureline GP",
+    "color": "#d9b66e",
+    "pit_crew_efficiency": 0.92,
+    "reliability_base": 0.95
+  },
+  {
+    "id": "northstar-dynamics",
+    "name": "Northstar Dynamics",
+    "color": "#78b8d9",
+    "pit_crew_efficiency": 0.9,
+    "reliability_base": 0.93
+  },
+  {
+    "id": "helix-motorsport",
+    "name": "Helix Motorsport",
+    "color": "#93d39f",
+    "pit_crew_efficiency": 0.88,
+    "reliability_base": 0.91
+  },
+  {
+    "id": "solstice-racing",
+    "name": "Solstice Racing",
+    "color": "#ef9579",
+    "pit_crew_efficiency": 0.89,
+    "reliability_base": 0.9
+  },
+  {
+    "id": "verdant-apex",
+    "name": "Verdant Apex",
+    "color": "#88c6b5",
+    "pit_crew_efficiency": 0.86,
+    "reliability_base": 0.88
+  },
+  {
+    "id": "vectoris-performance",
+    "name": "Vectoris Performance",
+    "color": "#c5c8d4",
+    "pit_crew_efficiency": 0.85,
+    "reliability_base": 0.87
+  }
+]
+

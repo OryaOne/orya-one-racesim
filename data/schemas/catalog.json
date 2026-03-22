@@ -1,0 +1,101 @@
+{
+  "drivers": {
+    "path": "data/drivers/drivers.json",
+    "fields": {
+      "id": "Stable driver identifier",
+      "name": "Public-safe driver display name",
+      "team_id": "Foreign key into teams.json",
+      "car_number": "Display number",
+      "recent_form": "Synthetic recent performance proxy, 0-100",
+      "qualifying_strength": "Synthetic single-lap strength, 0-100",
+      "tire_management": "Synthetic long-run tire conservation, 0-100",
+      "overtaking": "Synthetic pass execution strength, 0-100",
+      "consistency": "Lap-to-lap stability proxy, 0-100",
+      "aggression": "Risk-taking and incident exposure proxy, 0-100",
+      "wet_weather_skill": "Mixed and wet-condition competence, 0-100",
+      "reliability": "Mechanical and execution robustness, 0-100"
+    }
+  },
+  "teams": {
+    "path": "data/drivers/teams.json",
+    "fields": {
+      "id": "Stable team identifier",
+      "name": "Original team name",
+      "color": "Brand-safe accent color",
+      "pit_crew_efficiency": "Pit execution quality, 0-1",
+      "reliability_base": "Baseline reliability contribution, 0-1"
+    }
+  },
+  "grands_prix": {
+    "path": "data/tracks/grands_prix.json",
+    "fields": {
+      "id": "Stable track identifier",
+      "name": "Original event name",
+      "country": "Fictional host market",
+      "laps": "Nominal race distance in laps",
+      "lap_length_km": "Circuit length in km",
+      "base_race_time_sec": "Baseline total race time for simulation anchoring",
+      "overtaking_difficulty": "Passing difficulty, 0-1",
+      "tire_stress": "Relative tire degradation pressure, 0-1",
+      "fuel_sensitivity": "Fuel-load drag importance, 0-1",
+      "pit_loss_seconds": "Typical pit delta",
+      "track_position_importance": "Grid position sensitivity, 0-1",
+      "weather_volatility": "Likelihood that conditions change, 0-1",
+      "surface_evolution": "Track improvement during the weekend, 0-1",
+      "summary": "Short track profile description"
+    }
+  },
+  "strategy_templates": {
+    "path": "data/strategies/strategy_templates.json",
+    "fields": {
+      "id": "Stable strategy identifier",
+      "name": "Display label",
+      "description": "Short strategic framing",
+      "compound_sequence": "Ordered abstract compound plan",
+      "pit_windows": "Nominal pit windows by lap index",
+      "aggression": "Push vs preserve bias, 0-1",
+      "flexibility": "Ability to adapt to events, 0-1",
+      "tire_load": "Wear exposure bias, 0-1",
+      "track_position_bias": "Preference for defending track position, 0-1",
+      "safety_car_bias": "Ability to exploit neutralizations, 0-1",
+      "weather_adaptability": "Mixed-condition robustness, 0-1"
+    }
+  },
+  "weather_event_priors": {
+    "path": "data/weather/weather_event_priors.json",
+    "fields": {
+      "id": "Stable preset identifier",
+      "label": "Display name",
+      "dry_bias": "Likelihood race remains dry, 0-1",
+      "rain_onset_probability": "Chance of meaningful rain arrival, 0-1",
+      "track_evolution": "Track improvement under the preset, 0-1",
+      "temperature_variation": "Thermal swing intensity, 0-1",
+      "yellow_flag_probability": "Probability of yellow periods, 0-1",
+      "vsc_probability": "Probability of virtual safety car, 0-1",
+      "safety_car_probability": "Probability of full safety car, 0-1",
+      "red_flag_probability": "Probability of a red flag, 0-1",
+      "dnf_probability": "Global DNF pressure baseline, 0-1"
+    }
+  },
+  "training_samples": {
+    "path": "data/model/training_samples.csv",
+    "fields": {
+      "recent_form": "Synthetic recent performance proxy",
+      "qualifying_strength": "Synthetic qualifying metric",
+      "tire_management": "Synthetic tire conservation metric",
+      "overtaking": "Synthetic overtaking metric",
+      "consistency": "Synthetic stability metric",
+      "aggression": "Synthetic risk metric",
+      "wet_weather_skill": "Synthetic wet-weather skill",
+      "reliability": "Synthetic reliability metric",
+      "track_tire_stress": "Track tire stress from track metadata",
+      "overtaking_difficulty": "Track overtaking difficulty",
+      "track_position_importance": "Track-position sensitivity",
+      "fuel_sensitivity": "Fuel sensitivity",
+      "pit_loss_norm": "Pit delta normalized to 0-1 range",
+      "weather_risk": "Weather volatility/rain exposure proxy",
+      "target_pace": "Synthetic target label used for MLP training"
+    }
+  }
+}
+

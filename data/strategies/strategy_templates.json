@@ -1,0 +1,93 @@
+[
+  {
+    "id": "balanced-default",
+    "name": "Baseline Split",
+    "description": "Moderate tire use with a stable mid-race pit window and a low-regret execution profile.",
+    "compound_sequence": ["medium", "hard"],
+    "pit_windows": [24],
+    "aggression": 0.44,
+    "flexibility": 0.63,
+    "tire_load": 0.54,
+    "track_position_bias": 0.58,
+    "safety_car_bias": 0.46,
+    "weather_adaptability": 0.41
+  },
+  {
+    "id": "conservative-one-stop",
+    "name": "Track-Position Shield",
+    "description": "Protects track position and pit-loss exposure at the cost of a more vulnerable closing stint.",
+    "compound_sequence": ["hard", "medium"],
+    "pit_windows": [34],
+    "aggression": 0.28,
+    "flexibility": 0.36,
+    "tire_load": 0.76,
+    "track_position_bias": 0.78,
+    "safety_car_bias": 0.38,
+    "weather_adaptability": 0.29
+  },
+  {
+    "id": "aggressive-two-stop",
+    "name": "Attack Two-Stop",
+    "description": "Pushes shorter stints and depends on clean air plus real overtaking bandwidth.",
+    "compound_sequence": ["soft", "medium", "soft"],
+    "pit_windows": [18, 41],
+    "aggression": 0.86,
+    "flexibility": 0.44,
+    "tire_load": 0.31,
+    "track_position_bias": 0.33,
+    "safety_car_bias": 0.59,
+    "weather_adaptability": 0.35
+  },
+  {
+    "id": "undercut-attack",
+    "name": "Early Undercut",
+    "description": "Brings the first stop forward to unlock fresh-tire pace on high-degradation layouts.",
+    "compound_sequence": ["medium", "medium", "hard"],
+    "pit_windows": [16, 39],
+    "aggression": 0.74,
+    "flexibility": 0.49,
+    "tire_load": 0.42,
+    "track_position_bias": 0.45,
+    "safety_car_bias": 0.62,
+    "weather_adaptability": 0.38
+  },
+  {
+    "id": "long-first-stint",
+    "name": "Late Neutralization Cover",
+    "description": "Delays the first stop to preserve optionality for clean air or a later caution window.",
+    "compound_sequence": ["hard", "hard", "medium"],
+    "pit_windows": [28, 49],
+    "aggression": 0.39,
+    "flexibility": 0.71,
+    "tire_load": 0.63,
+    "track_position_bias": 0.64,
+    "safety_car_bias": 0.74,
+    "weather_adaptability": 0.47
+  },
+  {
+    "id": "safety-car-opportunistic",
+    "name": "Caution Window Split",
+    "description": "Keeps stint timing flexible to capitalize on neutralizations and compressed gaps.",
+    "compound_sequence": ["medium", "hard", "soft"],
+    "pit_windows": [21, 48],
+    "aggression": 0.58,
+    "flexibility": 0.84,
+    "tire_load": 0.48,
+    "track_position_bias": 0.53,
+    "safety_car_bias": 0.93,
+    "weather_adaptability": 0.56
+  },
+  {
+    "id": "wet-adaptive",
+    "name": "Mixed-Condition Adaptive",
+    "description": "Built for mixed conditions with compound flexibility and late crossover optionality.",
+    "compound_sequence": ["intermediate", "medium", "soft"],
+    "pit_windows": [15, 44],
+    "aggression": 0.52,
+    "flexibility": 0.91,
+    "tire_load": 0.37,
+    "track_position_bias": 0.47,
+    "safety_car_bias": 0.71,
+    "weather_adaptability": 0.97
+  }
+]

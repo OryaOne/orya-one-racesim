@@ -1,0 +1,55 @@
+[
+  {
+    "id": "dry-stable",
+    "label": "Dry Stable",
+    "dry_bias": 0.94,
+    "rain_onset_probability": 0.03,
+    "track_evolution": 0.67,
+    "temperature_variation": 0.28,
+    "yellow_flag_probability": 0.18,
+    "vsc_probability": 0.12,
+    "safety_car_probability": 0.1,
+    "red_flag_probability": 0.02,
+    "dnf_probability": 0.06
+  },
+  {
+    "id": "mixed-conditions",
+    "label": "Mixed Conditions",
+    "dry_bias": 0.58,
+    "rain_onset_probability": 0.36,
+    "track_evolution": 0.54,
+    "temperature_variation": 0.51,
+    "yellow_flag_probability": 0.28,
+    "vsc_probability": 0.21,
+    "safety_car_probability": 0.18,
+    "red_flag_probability": 0.05,
+    "dnf_probability": 0.08
+  },
+  {
+    "id": "rain-threat",
+    "label": "Rain Threat",
+    "dry_bias": 0.37,
+    "rain_onset_probability": 0.52,
+    "track_evolution": 0.43,
+    "temperature_variation": 0.57,
+    "yellow_flag_probability": 0.34,
+    "vsc_probability": 0.23,
+    "safety_car_probability": 0.22,
+    "red_flag_probability": 0.08,
+    "dnf_probability": 0.1
+  },
+  {
+    "id": "wet-race",
+    "label": "Wet Race",
+    "dry_bias": 0.08,
+    "rain_onset_probability": 0.74,
+    "track_evolution": 0.31,
+    "temperature_variation": 0.49,
+    "yellow_flag_probability": 0.41,
+    "vsc_probability": 0.27,
+    "safety_car_probability": 0.29,
+    "red_flag_probability": 0.11,
+    "dnf_probability": 0.12
+  }
+]
+

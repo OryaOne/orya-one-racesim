@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "orya-one-racesim-core"
+version = "0.1.0"
+description = "Simulation core for Orya One RaceSim"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "numpy>=2.1.0",
+  "pandas>=2.2.3",
+  "pydantic>=2.9.2"
+]
+
+[project.optional-dependencies]
+ml = [
+  "torch>=2.4.0"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
