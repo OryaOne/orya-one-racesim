@@ -315,19 +315,19 @@ function SectionFrame({
 }) {
   return (
     <Card className="overflow-hidden rounded-[16px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,18,24,0.98),rgba(7,9,13,1))] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-      <CardHeader className="border-b border-white/6 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0))] pb-3">
+      <CardHeader className="border-b border-white/6 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0))] pb-2.5 pt-4">
         <div className="flex items-start justify-between gap-4">
           <div>
             {eyebrow ? (
               <div className="text-[10px] uppercase tracking-[0.24em] text-primary/90">{eyebrow}</div>
             ) : null}
-            <CardTitle className="mt-2 font-display text-[1rem] uppercase tracking-[0.1em] text-white">{title}</CardTitle>
-            {subtitle ? <CardDescription className="mt-1 text-[12px] leading-5 text-muted-foreground/85">{subtitle}</CardDescription> : null}
+            <CardTitle className="mt-1.5 font-display text-[0.95rem] uppercase tracking-[0.08em] text-white">{title}</CardTitle>
+            {subtitle ? <CardDescription className="mt-0.5 text-[11px] leading-5 text-muted-foreground/75">{subtitle}</CardDescription> : null}
           </div>
           {action}
         </div>
       </CardHeader>
-      <CardContent className="p-4">{children}</CardContent>
+      <CardContent className="p-3.5">{children}</CardContent>
     </Card>
   );
 }
@@ -368,13 +368,15 @@ function HeaderMetric({
   tone?: "muted" | "default" | "success" | "warning";
 }) {
   return (
-    <div className="rounded-[12px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))] p-3.5">
-      <div className="flex items-center justify-between gap-3">
-        <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">{label}</div>
-        <Badge variant={tone}>{tone === "default" ? "Attack" : tone === "success" ? "Stable" : tone === "warning" ? "Risk" : "Live"}</Badge>
+    <div className="rounded-[10px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))] p-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-[9px] uppercase tracking-[0.22em] text-muted-foreground">{label}</div>
+        <Badge variant={tone} className="px-2 py-0.5 text-[8px]">
+          {tone === "default" ? "Attack" : tone === "success" ? "Stable" : tone === "warning" ? "Risk" : "Live"}
+        </Badge>
       </div>
-      <div className="mt-3 font-display text-[1.4rem] leading-none text-white">{value}</div>
-      <div className="mt-2 font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">{detail}</div>
+      <div className="mt-2 truncate font-display text-[1.15rem] leading-none text-white">{value}</div>
+      <div className="mt-1 truncate font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{detail}</div>
     </div>
   );
 }
@@ -398,21 +400,21 @@ function RailSection({
 }) {
   return (
     <details open={defaultOpen} className="group rounded-[14px] border border-white/8 bg-[linear-gradient(180deg,rgba(16,19,24,0.98),rgba(9,11,15,1))] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-      <summary className="flex cursor-pointer items-start justify-between gap-4 px-4 py-3.5">
+      <summary className="flex cursor-pointer items-start justify-between gap-3 px-3.5 py-3">
         <div className="flex items-start gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-primary/15 bg-primary/10">
+          <div className="flex h-8 w-8 items-center justify-center rounded-[9px] border border-primary/15 bg-primary/10">
             <Icon className="h-4 w-4 text-primary" />
           </div>
           <div>
             <div className="text-[10px] uppercase tracking-[0.24em] text-primary/90">{eyebrow}</div>
-            <div className="mt-1 text-[0.95rem] font-medium uppercase tracking-[0.06em] text-white">{title}</div>
-            <div className="mt-1 text-[11px] leading-5 text-muted-foreground">{summary}</div>
-            {description ? <div className="mt-1 hidden font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground/75 sm:block">{description}</div> : null}
+            <div className="mt-0.5 text-[0.9rem] font-medium uppercase tracking-[0.06em] text-white">{title}</div>
+            <div className="mt-0.5 text-[10px] leading-4 text-muted-foreground">{summary}</div>
+            {description ? <div className="mt-0.5 hidden font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground/75 sm:block">{description}</div> : null}
           </div>
         </div>
         <ChevronDown className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition duration-200 group-open:rotate-180" />
       </summary>
-      <div className="border-t border-white/6 px-4 pb-4 pt-3">{children}</div>
+      <div className="border-t border-white/6 px-3.5 pb-3.5 pt-3">{children}</div>
     </details>
   );
 }
@@ -434,7 +436,7 @@ function SelectField({
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="min-h-11 rounded-[10px] border border-white/10 bg-[#090c11] px-4 py-3 text-sm text-white outline-none transition focus:border-primary/60"
+        className="min-h-10 rounded-[10px] border border-white/10 bg-[#090c11] px-3.5 py-2.5 text-sm text-white outline-none transition focus:border-primary/60"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -458,9 +460,9 @@ function SliderField({
   description: string;
 }) {
   return (
-    <label className="rounded-[12px] border border-white/8 bg-black/25 p-3.5">
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <span className="text-sm text-white">{label}</span>
+    <label className="rounded-[10px] border border-white/8 bg-black/25 p-3">
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <span className="text-[13px] text-white">{label}</span>
         <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
           <span>{sliderLabel(value)}</span>
           <span>{value.toFixed(2)}</span>
@@ -475,7 +477,7 @@ function SliderField({
         onChange={(event) => onChange(Number(event.target.value))}
         className="h-2 w-full cursor-pointer appearance-none rounded-full bg-white/10 accent-[#ff415f]"
       />
-      <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{description.split(".")[0]}</p>
+      <p className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">{description.split(".")[0]}</p>
     </label>
   );
 }
@@ -518,18 +520,18 @@ function InsightCard({
 }) {
   return (
     <Card className="rounded-[14px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,18,23,0.98),rgba(8,10,14,1))]">
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-2.5 pt-4">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-primary/15 bg-primary/10">
             <Icon className="h-4 w-4 text-primary" />
           </div>
           <div>
             <CardTitle className="font-display text-[0.95rem] uppercase tracking-[0.08em]">{title}</CardTitle>
-            {subtitle ? <CardDescription className="mt-1 text-[11px] leading-5">{subtitle}</CardDescription> : null}
+            {subtitle ? <CardDescription className="mt-0.5 text-[10px] leading-4">{subtitle}</CardDescription> : null}
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3.5">{children}</CardContent>
+      <CardContent className="space-y-2.5">{children}</CardContent>
     </Card>
   );
 }
@@ -597,29 +599,24 @@ function TimingStrip({ drivers }: { drivers: DriverResult[] }) {
       {drivers.map((driver, index) => (
         <div
           key={driver.driver_id}
-          className="grid grid-cols-[44px_minmax(0,1.2fr)_72px_72px_72px] items-center gap-3 rounded-[12px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))] px-3 py-3"
+          className="grid grid-cols-[34px_minmax(0,1fr)_58px_58px_58px] items-center gap-2 rounded-[10px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))] px-2.5 py-2.5 md:grid-cols-[38px_minmax(0,1.2fr)_62px_62px_62px]"
         >
-          <div className="font-display text-xl leading-none text-white">P{index + 1}</div>
+          <div className="font-display text-lg leading-none text-white">P{index + 1}</div>
           <div className="min-w-0">
-            <div className="truncate text-sm text-white">{driver.driver_name}</div>
-            <div className="mt-1 truncate font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">{driver.team_name}</div>
+            <div className="truncate text-[13px] text-white">{driver.driver_name}</div>
+            <div className="mt-0.5 truncate font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">{driver.team_name}</div>
           </div>
-          <div className="rounded-[10px] border border-white/8 bg-black/25 px-2 py-2 text-center">
+          <div className="rounded-[8px] border border-white/8 bg-black/25 px-1.5 py-1.5 text-center">
             <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">Win</div>
-            <div className="mt-1 text-sm text-white">{formatPct(driver.win_probability)}</div>
+            <div className="mt-0.5 text-[12px] text-white">{formatPct(driver.win_probability)}</div>
           </div>
-          <div className="rounded-[10px] border border-white/8 bg-black/25 px-2 py-2 text-center">
+          <div className="rounded-[8px] border border-white/8 bg-black/25 px-1.5 py-1.5 text-center">
             <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">Pts</div>
-            <div className="mt-1 text-sm text-white">{driver.expected_points.toFixed(1)}</div>
+            <div className="mt-0.5 text-[12px] text-white">{driver.expected_points.toFixed(1)}</div>
           </div>
-          <div className="flex items-center justify-between gap-2 rounded-[10px] border border-white/8 bg-black/25 px-2 py-2">
-            <div>
-              <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">Fit</div>
-              <div className="mt-1 text-sm text-white">{driver.strategy_fit_score.toFixed(1)}</div>
-            </div>
-            <Badge variant={badgeVariantForConfidence(driver.confidence_label)} className="px-1.5 py-0.5 text-[8px]">
-              {driver.confidence_label}
-            </Badge>
+          <div className="rounded-[8px] border border-white/8 bg-black/25 px-1.5 py-1.5 text-center">
+            <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">Fit</div>
+            <div className="mt-0.5 text-[12px] text-white">{driver.strategy_fit_score.toFixed(1)}</div>
           </div>
         </div>
       ))}
@@ -858,14 +855,14 @@ export function SimulatorWorkspace() {
       };
 
   return (
-    <div className="space-y-5">
-      <motion.section {...motionProps} className="sticky top-[5.8rem] z-20">
+    <div className="space-y-3">
+      <motion.section {...motionProps} className="sticky top-[5.25rem] z-20">
         <Card className="overflow-hidden rounded-[16px] border-primary/15 bg-[linear-gradient(120deg,rgba(13,15,20,1),rgba(8,10,13,1))] shadow-[0_24px_70px_rgba(0,0,0,0.34)]">
-          <CardContent className="p-4">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <CardContent className="p-3.5">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge>Race command</Badge>
+                  <Badge>Grand Prix</Badge>
                   <StatusChip label="Preset" value={activePreset} variant={activePreset === "Custom" ? "muted" : "default"} />
                   <StatusChip label="Weather" value={activeWeather.label} variant="muted" />
                   {activeTrack.sprint_weekend ? <StatusChip label="Weekend" value="Sprint" variant="warning" /> : null}
@@ -876,7 +873,7 @@ export function SimulatorWorkspace() {
                     variant={loadingSimulation ? "warning" : deferredSimulation ? "success" : "muted"}
                   />
                 </div>
-                <h2 className="mt-3 font-display text-[clamp(1.8rem,3.5vw,3.2rem)] leading-[0.98] tracking-[-0.05em] text-white">
+                <h2 className="mt-2.5 font-display text-[clamp(1.7rem,3vw,2.7rem)] leading-[0.98] tracking-[-0.05em] text-white">
                   {activeTrack.name}
                 </h2>
                 <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
@@ -885,7 +882,7 @@ export function SimulatorWorkspace() {
                   <span>{form.simulation_runs} runs</span>
                   <span>{form.complexity_level} detail</span>
                 </div>
-                <div className="mt-3 flex flex-wrap gap-2">
+                <div className="mt-2.5 flex flex-wrap gap-2">
                   <StatusChip label="Deg" value={activeTrack.degradation_profile} variant="muted" />
                   <StatusChip label="Track pos" value={`${Math.round(activeTrack.track_position_importance * 100)}`} variant="muted" />
                   <StatusChip label="Energy" value={`${Math.round(activeTrack.energy_sensitivity * 100)}`} variant="default" />
@@ -893,52 +890,33 @@ export function SimulatorWorkspace() {
                 </div>
               </div>
 
-              <div className="flex w-full flex-col gap-3 xl:w-[360px]">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Button size="lg" className="w-full justify-center" onClick={() => void executeSimulation()} disabled={loadingSimulation}>
+              <div className="flex w-full flex-col gap-2.5 xl:w-[332px]">
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <Button className="w-full justify-center" onClick={() => void executeSimulation()} disabled={loadingSimulation}>
                     {loadingSimulation ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
                     Run Grand Prix
                   </Button>
                   <Button
                     variant="secondary"
-                    size="lg"
                     className="w-full justify-center"
                     onClick={() => void requestSuggestions()}
                     disabled={loadingSuggestions}
                   >
                     {loadingSuggestions ? <Loader2 className="h-4 w-4 animate-spin" /> : <BarChart3 className="h-4 w-4" />}
-                    Refresh calls
+                    Refresh
                   </Button>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-                  <div className="rounded-[12px] border border-white/8 bg-white/[0.03] p-3.5">
-                    <div className="flex items-center justify-between gap-4">
-                      <div>
-                        <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Weekend setup</div>
-                        <div className="mt-2 text-sm text-white">
-                          {activeTrack.name} · {activeWeather.label}
-                        </div>
-                      </div>
-                      <Badge variant={signalVariant(currentVolatility)}>{volatilityLabel(currentVolatility)}</Badge>
-                    </div>
-                    <div className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                      Track position {Math.round(activeTrack.track_position_importance * 100)} · Qualifying {Math.round(form.weights.qualifying_importance * 100)}
-                    </div>
-                  </div>
-                  <div className="rounded-[12px] border border-white/8 bg-black/25 p-3.5">
-                    <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Track state</div>
-                    <div className="mt-2 flex items-center gap-2 text-sm text-white">
-                      <span className={`h-2.5 w-2.5 rounded-full ${signalColor(currentVolatility)}`} />
-                      {volatilityLabel(currentVolatility)}
-                    </div>
-                    <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">Chaos {Math.round(form.environment.randomness_intensity * 100)}</div>
-                  </div>
+                <div className="flex flex-wrap items-center gap-2 rounded-[10px] border border-white/8 bg-white/[0.03] px-3 py-2.5">
+                  <StatusChip label="Weekend" value={activeWeather.label} variant={signalVariant(currentVolatility)} />
+                  <StatusChip label="Chaos" value={`${Math.round(form.environment.randomness_intensity * 100)}`} variant="muted" />
+                  <StatusChip label="Quali" value={`${Math.round(form.weights.qualifying_importance * 100)}`} variant="muted" />
+                  <StatusChip label="Track pos" value={`${Math.round(activeTrack.track_position_importance * 100)}`} variant="muted" />
                 </div>
-                {error ? <div className="rounded-[12px] border border-rose-300/20 bg-rose-400/10 px-3 py-2 text-sm text-rose-100">{error}</div> : null}
+                {error ? <div className="rounded-[10px] border border-rose-300/20 bg-rose-400/10 px-3 py-2 text-[12px] leading-5 text-rose-100">{error}</div> : null}
               </div>
             </div>
 
-            <div className="mt-4 grid gap-3 xl:grid-cols-[1.2fr_0.8fr]">
+            <div className="mt-3 grid gap-2.5 xl:grid-cols-[1.24fr_0.76fr]">
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 <HeaderMetric
                   label="Lead car"
@@ -965,7 +943,7 @@ export function SimulatorWorkspace() {
                   tone="warning"
                 />
               </div>
-              <div className="rounded-[14px] border border-white/8 bg-black/25 p-4">
+              <div className="rounded-[10px] border border-white/8 bg-black/25 p-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-[10px] uppercase tracking-[0.24em] text-primary/90">Timing strip</div>
                   <Badge variant={leadDriver ? badgeVariantForConfidence(leadDriver.confidence_label) : signalVariant(currentVolatility)}>
@@ -973,11 +951,11 @@ export function SimulatorWorkspace() {
                   </Badge>
                 </div>
                 {deferredSimulation ? (
-                  <div className="mt-3">
+                  <div className="mt-2.5">
                     <TimingStrip drivers={topDrivers} />
                   </div>
                 ) : (
-                  <div className="mt-3 font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                  <div className="mt-2.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
                     Run to load the top four, win share, points load, and strategy fit.
                   </div>
                 )}
@@ -987,17 +965,16 @@ export function SimulatorWorkspace() {
         </Card>
       </motion.section>
 
-      <div className="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)_300px]">
-        <aside className="order-3 space-y-3 xl:order-1 xl:sticky xl:top-[15.75rem] xl:h-[calc(100vh-16.5rem)] xl:overflow-auto xl:pr-1">
+      <div className="grid gap-3 xl:grid-cols-[320px_minmax(0,1fr)_284px]">
+        <aside className="order-3 space-y-2.5 xl:order-1 xl:sticky xl:top-[14.75rem] xl:h-[calc(100vh-15.5rem)] xl:overflow-auto xl:pr-1">
           <RailSection
             eyebrow="01 · Grand Prix setup"
             title="Weekend and circuit"
-            summary="Race, preset, circuit card."
-            description="Fast weekend selection first."
+            summary="Race, preset, circuit."
             icon={Gauge}
           >
-            <div className="grid gap-3">
-              <div className="grid gap-2">
+            <div className="grid gap-2.5">
+              <div className="grid gap-1.5">
                 {DEMO_PRESETS.map((preset) => (
                   <button
                     key={preset.id}
@@ -1007,17 +984,17 @@ export function SimulatorWorkspace() {
                       setForm(next);
                       void requestSuggestions(next, { suppressError: true });
                     }}
-                    className="rounded-[14px] border border-white/8 bg-white/[0.03] px-4 py-3 text-left transition duration-200 hover:border-primary/30 hover:bg-white/[0.05] active:scale-[0.99]"
+                    className="rounded-[10px] border border-white/8 bg-white/[0.03] px-3 py-2.5 text-left transition duration-200 hover:border-primary/30 hover:bg-white/[0.05] active:scale-[0.99]"
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="text-sm text-white">{preset.label}</div>
                       <Badge variant="muted">{preset.simulation_runs}</Badge>
                     </div>
-                    <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{preset.description}</div>
+                    <div className="mt-1 line-clamp-1 font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">{preset.description}</div>
                   </button>
                 ))}
               </div>
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+              <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-1">
                 <SelectField
                   label="Grand Prix"
                   value={form.grand_prix_id}
@@ -1031,12 +1008,12 @@ export function SimulatorWorkspace() {
                   options={defaults.weather_presets.map((item) => ({ value: item.id, label: item.label }))}
                 />
               </div>
-              <div className="rounded-[12px] border border-primary/15 bg-primary/8 p-3.5">
+              <div className="rounded-[10px] border border-primary/15 bg-primary/8 p-3">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <div className="text-[10px] uppercase tracking-[0.24em] text-primary/90">Circuit card</div>
-                    <div className="mt-2 text-base text-white">{activeTrack.circuit_name}</div>
-                    <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{activeTrack.summary}</div>
+                    <div className="mt-1.5 text-sm text-white">{activeTrack.circuit_name}</div>
+                    <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">{activeTrack.summary}</div>
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     {activeTrack.sprint_weekend ? <Badge variant="warning">Sprint</Badge> : null}
@@ -1044,7 +1021,7 @@ export function SimulatorWorkspace() {
                   </div>
                 </div>
                 {activeTrack.homologation_note ? (
-                  <div className="mt-3 rounded-[12px] border border-amber-300/20 bg-amber-400/10 p-3 text-[12px] leading-5 text-amber-100">
+                  <div className="mt-2 rounded-[10px] border border-amber-300/20 bg-amber-400/10 p-2.5 text-[11px] leading-5 text-amber-100">
                     {activeTrack.homologation_note}
                   </div>
                 ) : null}
@@ -1058,14 +1035,14 @@ export function SimulatorWorkspace() {
             summary="Weather, cautions, attrition."
             icon={CloudRain}
           >
-            <div className="grid gap-3">
+            <div className="grid gap-2.5">
               <SliderField
                 label="Weather swing"
                 value={form.environment.rain_onset}
                 onChange={(value) => setForm({ ...form, environment: { ...form.environment, rain_onset: value } })}
                 description="Raises crossover pressure and wet-phase adaptation."
               />
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+              <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-1">
                 <SliderField
                   label="SC / VSC risk"
                   value={form.environment.full_safety_cars}
@@ -1079,7 +1056,7 @@ export function SimulatorWorkspace() {
                   description="Short local cautions and tactical noise."
                 />
               </div>
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+              <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-1">
                 <SliderField
                   label="Energy deployment"
                   value={form.environment.energy_deployment_intensity}
@@ -1112,12 +1089,12 @@ export function SimulatorWorkspace() {
             summary="Preset plus manual calls."
             icon={Target}
           >
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               <SelectField
-                label="Field preset"
+                label="Field"
                 value={form.field_strategy_preset}
                 onChange={(value) => setForm({ ...form, field_strategy_preset: value })}
-                options={[{ value: "", label: "Use suggested / manual mix" }].concat(
+                options={[{ value: "", label: "Suggested / manual mix" }].concat(
                   defaults.strategy_templates.map((item) => ({ value: item.id, label: item.name })),
                 )}
               />
@@ -1140,9 +1117,9 @@ export function SimulatorWorkspace() {
                   Apply field calls
                 </Button>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {suggestions.slice(0, 3).map((suggestion) => (
-                  <div key={suggestion.driver_id} className="rounded-[14px] border border-white/8 bg-white/[0.03] p-3">
+                  <div key={suggestion.driver_id} className="rounded-[10px] border border-white/8 bg-white/[0.03] p-2.5">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="text-sm text-white">
@@ -1154,7 +1131,7 @@ export function SimulatorWorkspace() {
                       </div>
                       <Badge variant={badgeVariantForRisk(suggestion.risk_profile)}>{suggestion.risk_profile}</Badge>
                     </div>
-                    <div className="mt-2 text-[12px] leading-5 text-muted-foreground">{suggestion.rationale[0]}</div>
+                    <div className="mt-1.5 line-clamp-2 text-[11px] leading-5 text-muted-foreground">{suggestion.rationale[0]}</div>
                   </div>
                 ))}
               </div>
@@ -1168,12 +1145,12 @@ export function SimulatorWorkspace() {
             icon={Radar}
             defaultOpen={false}
           >
-            <div className="max-h-[420px] space-y-2 overflow-auto pr-1">
+            <div className="max-h-[380px] space-y-1.5 overflow-auto pr-1">
               {defaults.drivers.map((driver) => {
                 const team = defaults.teams.find((item) => item.id === driver.team_id);
                 const override = form.driver_overrides.find((item) => item.driver_id === driver.id);
                 return (
-                  <div key={driver.id} className="rounded-[14px] border border-white/8 bg-white/[0.03] p-3">
+                  <div key={driver.id} className="rounded-[10px] border border-white/8 bg-white/[0.03] p-2.5">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="text-sm text-white">{driver.name}</div>
@@ -1183,7 +1160,7 @@ export function SimulatorWorkspace() {
                         Q {driver.qualifying_strength} · E {driver.energy_management}
                       </div>
                     </div>
-                    <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_88px]">
+                    <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,1fr)_72px]">
                       <select
                         value={form.strategies[driver.id] ?? ""}
                         onChange={(event) =>
@@ -1193,7 +1170,7 @@ export function SimulatorWorkspace() {
                             strategies: { ...form.strategies, [driver.id]: event.target.value },
                           })
                         }
-                        className="min-h-11 rounded-[12px] border border-white/10 bg-[#090c11] px-3 py-2 text-sm text-white outline-none focus:border-primary/60"
+                        className="min-h-10 rounded-[10px] border border-white/10 bg-[#090c11] px-3 py-2 text-sm text-white outline-none focus:border-primary/60"
                       >
                         <option value="">Suggested / auto</option>
                         {defaults.strategy_templates.map((item) => (
@@ -1218,10 +1195,10 @@ export function SimulatorWorkspace() {
                             ),
                           })
                         }
-                        className="min-h-11 rounded-[12px] border border-white/10 bg-[#090c11] px-3 py-2 text-sm text-white outline-none focus:border-primary/60"
+                        className="min-h-10 rounded-[10px] border border-white/10 bg-[#090c11] px-3 py-2 text-sm text-white outline-none focus:border-primary/60"
                       />
                     </div>
-                    <div className="mt-2 flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                    <div className="mt-1.5 flex items-center justify-between text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
                       <span>Form delta</span>
                       <span>{formatSigned(override?.recent_form_delta ?? 0)}</span>
                     </div>
@@ -1238,8 +1215,8 @@ export function SimulatorWorkspace() {
             icon={SlidersHorizontal}
             defaultOpen={false}
           >
-            <div className="grid gap-3">
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+            <div className="grid gap-2.5">
+              <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-1">
                 <label className="flex flex-col gap-2">
                   <span className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Simulation runs</span>
                   <input
@@ -1248,9 +1225,9 @@ export function SimulatorWorkspace() {
                     max={5000}
                     value={form.simulation_runs}
                     onChange={(event) => setForm({ ...form, simulation_runs: Number(event.target.value) })}
-                    className="min-h-11 rounded-[12px] border border-white/10 bg-[#090c11] px-4 py-3 text-sm text-white outline-none focus:border-primary/60"
+                    className="min-h-10 rounded-[10px] border border-white/10 bg-[#090c11] px-3.5 py-2.5 text-sm text-white outline-none focus:border-primary/60"
                   />
-                  <span className="text-[12px] leading-5 text-muted-foreground">200-400 is the live-safe range.</span>
+                  <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">200-400 live-safe.</span>
                 </label>
                 <SelectField
                   label="Simulation detail"
@@ -1265,7 +1242,7 @@ export function SimulatorWorkspace() {
                   ]}
                 />
               </div>
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+              <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-1">
                 <SliderField
                   label="Qualifying weight"
                   value={form.weights.qualifying_importance}
@@ -1313,26 +1290,21 @@ export function SimulatorWorkspace() {
           </RailSection>
         </aside>
 
-        <main className="order-1 space-y-6 xl:order-2">
+        <main className="order-1 space-y-3 xl:order-2">
           <motion.section {...motionProps}>
-            <SectionFrame
-              eyebrow="Race outcome projection"
-              title="Outcome board"
-              subtitle="Lead car, race shape, and risk channel."
-              action={<Badge variant={signalVariant(currentVolatility)}>{volatilityLabel(currentVolatility)}</Badge>}
-            >
+            <SectionFrame eyebrow="Race outcome projection" title="Outcome board" action={<Badge variant={signalVariant(currentVolatility)}>{volatilityLabel(currentVolatility)}</Badge>}>
               {!deferredSimulation ? (
-                <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
-                  <div className="rounded-[14px] border border-dashed border-white/10 bg-black/20 p-5">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-[12px] border border-primary/20 bg-primary/10">
+                <div className="space-y-2.5">
+                  <div className="flex items-center gap-3 rounded-[10px] border border-dashed border-white/10 bg-black/20 px-3 py-2.5">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-[9px] border border-primary/20 bg-primary/10">
                       <Radar className="h-5 w-5 text-primary" />
                     </div>
-                    <div className="mt-4 font-display text-[1.65rem] uppercase tracking-[-0.03em] text-white">Board armed</div>
-                    <p className="mt-3 max-w-xl font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                      Run to load finish order, strategy fit, points load, and disruption shape.
-                    </p>
+                    <div className="min-w-0">
+                      <div className="font-display text-[1rem] uppercase tracking-[0.06em] text-white">Awaiting first run</div>
+                      <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">Order, fit, points, and disruption load after the first simulation.</div>
+                    </div>
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
                     <MetricPanel label="Weekend state" value={activeWeather.label} detail="Current weather mode" tone="muted" />
                     <MetricPanel label="Circuit pressure" value={volatilityLabel(currentVolatility)} detail="SC risk + weather swing + noise" tone={signalVariant(currentVolatility)} />
                     <MetricPanel label="Qualifying value" value={`${Math.round(activeTrack.qualifying_importance * 100)}/100`} detail="Grid leverage" tone="muted" />
@@ -1340,8 +1312,8 @@ export function SimulatorWorkspace() {
                   </div>
                 </div>
               ) : (
-                <div className="grid gap-4 xl:grid-cols-[1.3fr_0.7fr]">
-                  <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid gap-3 xl:grid-cols-[1.3fr_0.7fr]">
+                  <div className="grid gap-2.5 md:grid-cols-2">
                     <MetricPanel
                       label="Lead car"
                       value={leadDriver ? leadDriver.driver_name : "Pending"}
@@ -1367,17 +1339,17 @@ export function SimulatorWorkspace() {
                       tone="warning"
                     />
                   </div>
-                  <div className="rounded-[14px] border border-white/8 bg-black/25 p-4">
+                  <div className="rounded-[12px] border border-white/8 bg-black/25 p-3.5">
                     <div className="text-[10px] uppercase tracking-[0.24em] text-primary/90">Scenario line</div>
-                    <div className="mt-3 text-base leading-7 text-white">{deferredSimulation.scenario.headline}</div>
-                    <div className="mt-4 grid gap-3">
-                      <div className="rounded-[12px] border border-white/8 bg-white/[0.03] p-3">
+                    <div className="mt-2.5 text-sm leading-6 text-white">{deferredSimulation.scenario.headline}</div>
+                    <div className="mt-3 grid gap-2.5">
+                      <div className="rounded-[10px] border border-white/8 bg-white/[0.03] p-2.5">
                         <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Strategy outlook</div>
-                        <div className="mt-2 font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">{deferredSimulation.scenario.strategy_outlook}</div>
+                        <div className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{deferredSimulation.scenario.strategy_outlook}</div>
                       </div>
-                      <div className="rounded-[12px] border border-white/8 bg-white/[0.03] p-3">
+                      <div className="rounded-[10px] border border-white/8 bg-white/[0.03] p-2.5">
                         <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Confidence note</div>
-                        <div className="mt-2 font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">{deferredSimulation.scenario.confidence_note}</div>
+                        <div className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{deferredSimulation.scenario.confidence_note}</div>
                       </div>
                     </div>
                   </div>
@@ -1389,12 +1361,7 @@ export function SimulatorWorkspace() {
           {deferredSimulation ? (
             <>
               <motion.div {...motionProps}>
-                <SectionFrame
-                  eyebrow="Detailed analytics"
-                  title="Race engineering deck"
-                  subtitle="Order, strategy, and diagnostics."
-                  action={<AnalyticsTabs value={analyticsView} onChange={setAnalyticsView} />}
-                >
+                <SectionFrame eyebrow="Detailed analytics" title="Race engineering deck" action={<AnalyticsTabs value={analyticsView} onChange={setAnalyticsView} />}>
                   {analyticsView === "order" ? (
                     <div className="space-y-5">
                       <div className="grid gap-5 2xl:grid-cols-[1.05fr_0.95fr]">
@@ -1579,35 +1546,31 @@ export function SimulatorWorkspace() {
               </motion.div>
             </>
           ) : (
-            <SectionFrame
-              eyebrow="No active run"
-              title="The projection board is ready"
-              subtitle="Run a Grand Prix to populate the board."
-            >
-              <div className="rounded-[14px] border border-dashed border-white/10 bg-black/20 p-8 text-center">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-[14px] border border-primary/20 bg-primary/10">
+            <SectionFrame eyebrow="No active run" title="Projection board">
+              <div className="rounded-[12px] border border-dashed border-white/10 bg-black/20 p-5 text-center">
+                <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-[10px] border border-primary/20 bg-primary/10">
                   <AlertTriangle className="h-5 w-5 text-primary" />
                 </div>
-                <div className="mt-4 text-lg uppercase tracking-[0.08em] text-white">No active projection</div>
-                <div className="mt-2 font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                  The center board switches from preview to projection after the first run.
-                </div>
+                <div className="mt-3 text-base uppercase tracking-[0.08em] text-white">No active projection</div>
+                <div className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Run once to populate the board.</div>
               </div>
             </SectionFrame>
           )}
         </main>
 
-        <aside className="order-2 space-y-6 xl:order-3 xl:sticky xl:top-[16.25rem] xl:h-[calc(100vh-17rem)] xl:overflow-auto xl:pl-1">
+        <aside className="order-2 space-y-3 xl:order-3 xl:sticky xl:top-[14.75rem] xl:h-[calc(100vh-15.5rem)] xl:overflow-auto xl:pl-1">
           <InsightCard
             title="Circuit sensitivity"
             subtitle="Track-led levers."
             icon={Thermometer}
           >
-            <SignalMeter label="Qualifying" value={activeTrack.qualifying_importance} />
-            <SignalMeter label="Track position" value={activeTrack.track_position_importance} />
-            <SignalMeter label="Energy demand" value={activeTrack.energy_sensitivity} />
-            <SignalMeter label="Weather swing" value={activeTrack.weather_volatility} />
-            <SignalMeter label="SC risk" value={activeTrack.safety_car_risk} />
+            <div className="grid gap-2">
+              <SignalMeter label="Qualifying" value={activeTrack.qualifying_importance} />
+              <SignalMeter label="Track position" value={activeTrack.track_position_importance} />
+              <SignalMeter label="Energy demand" value={activeTrack.energy_sensitivity} />
+              <SignalMeter label="Weather swing" value={activeTrack.weather_volatility} />
+              <SignalMeter label="SC risk" value={activeTrack.safety_car_risk} />
+            </div>
           </InsightCard>
 
           <InsightCard
@@ -1615,10 +1578,12 @@ export function SimulatorWorkspace() {
             subtitle="Current control state."
             icon={ShieldAlert}
           >
-            <SignalMeter label="Weather" value={form.environment.rain_onset} secondary={sliderLabel(form.environment.rain_onset)} />
-            <SignalMeter label="Race control" value={(form.environment.full_safety_cars + form.environment.virtual_safety_cars) / 2} secondary="SC / VSC" />
-            <SignalMeter label="Attrition" value={(form.environment.dnfs + form.environment.crashes) / 2} secondary="DNF + incident" />
-            <SignalMeter label="Randomness" value={form.environment.randomness_intensity} secondary={volatilityLabel(form.environment.randomness_intensity)} />
+            <div className="grid gap-2">
+              <SignalMeter label="Weather" value={form.environment.rain_onset} secondary={sliderLabel(form.environment.rain_onset)} />
+              <SignalMeter label="Race control" value={(form.environment.full_safety_cars + form.environment.virtual_safety_cars) / 2} secondary="SC / VSC" />
+              <SignalMeter label="Attrition" value={(form.environment.dnfs + form.environment.crashes) / 2} secondary="DNF + incident" />
+              <SignalMeter label="Randomness" value={form.environment.randomness_intensity} secondary={volatilityLabel(form.environment.randomness_intensity)} />
+            </div>
           </InsightCard>
 
           <InsightCard
@@ -1627,12 +1592,12 @@ export function SimulatorWorkspace() {
             icon={Zap}
           >
             {leaderDiagnostics ? (
-              <>
+              <div className="grid gap-2">
                 <SignalMeter label="Pace edge" value={Math.min(1, Math.max(0, (leaderDiagnostics.pace_edge + 1.6) / 3.2))} secondary={compactNumber(leaderDiagnostics.pace_edge)} />
                 <SignalMeter label="Track fit" value={Math.min(1, Math.max(0, leaderDiagnostics.track_fit_score / 20))} secondary={compactNumber(leaderDiagnostics.track_fit_score)} />
                 <SignalMeter label="Strategy comp" value={Math.min(1, Math.max(0, (leaderDiagnostics.strategy_component + 6) / 12))} secondary={compactNumber(leaderDiagnostics.strategy_component)} />
                 <SignalMeter label="Chaos resilience" value={Math.min(1, Math.max(0, leaderDiagnostics.chaos_resilience))} secondary={compactNumber(leaderDiagnostics.chaos_resilience)} />
-              </>
+              </div>
             ) : (
               <div className="rounded-[12px] border border-white/8 bg-white/[0.03] p-4 font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
                 Run to inspect pace edge, track fit, strategy comp, and chaos resilience.
@@ -1645,27 +1610,27 @@ export function SimulatorWorkspace() {
             subtitle="Weekend metadata."
             icon={Flag}
           >
-            <div className="rounded-[14px] border border-white/8 bg-white/[0.03] p-4">
+            <div className="rounded-[10px] border border-white/8 bg-white/[0.03] p-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="text-sm text-white">{activeTrack.name}</div>
                 {activeTrack.sprint_weekend ? <Badge variant="warning">Sprint</Badge> : <Badge variant="muted">Standard</Badge>}
               </div>
-              <div className="mt-2 text-[12px] leading-5 text-muted-foreground">{activeTrack.summary}</div>
+              <div className="mt-1.5 line-clamp-2 text-[11px] leading-5 text-muted-foreground">{activeTrack.summary}</div>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-[12px] border border-white/8 bg-black/20 p-3">
+              <div className="rounded-[10px] border border-white/8 bg-black/20 p-2.5">
                 <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Circuit</div>
                 <div className="mt-1 text-sm text-white">{activeTrack.circuit_type}</div>
               </div>
-              <div className="rounded-[12px] border border-white/8 bg-black/20 p-3">
+              <div className="rounded-[10px] border border-white/8 bg-black/20 p-2.5">
                 <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Laps</div>
                 <div className="mt-1 text-sm text-white">{activeTrack.laps}</div>
               </div>
-              <div className="rounded-[12px] border border-white/8 bg-black/20 p-3">
+              <div className="rounded-[10px] border border-white/8 bg-black/20 p-2.5">
                 <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Pit loss</div>
                 <div className="mt-1 text-sm text-white">{activeTrack.pit_loss_seconds.toFixed(1)}s</div>
               </div>
-              <div className="rounded-[12px] border border-white/8 bg-black/20 p-3">
+              <div className="rounded-[10px] border border-white/8 bg-black/20 p-2.5">
                 <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Deg</div>
                 <div className="mt-1 text-sm capitalize text-white">{activeTrack.degradation_profile}</div>
               </div>
@@ -1678,17 +1643,17 @@ export function SimulatorWorkspace() {
             icon={Trophy}
           >
             {topDrivers.length ? (
-              <div className="space-y-3">
+              <div className="space-y-1.5">
                 {topDrivers.map((driver) => (
-                  <div key={driver.driver_id} className="rounded-[14px] border border-white/8 bg-white/[0.03] p-3">
+                  <div key={driver.driver_id} className="rounded-[10px] border border-white/8 bg-white/[0.03] p-2.5">
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <div className="text-sm text-white">{driver.driver_name}</div>
-                        <div className="mt-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">{driver.team_name}</div>
+                        <div className="text-[13px] text-white">{driver.driver_name}</div>
+                        <div className="mt-0.5 text-[9px] uppercase tracking-[0.16em] text-muted-foreground">{driver.team_name}</div>
                       </div>
-                      <div className="text-sm text-white">{formatPct(driver.win_probability)}</div>
+                      <div className="text-[13px] text-white">{formatPct(driver.win_probability)}</div>
                     </div>
-                    <div className="mt-2 text-[12px] leading-5 text-muted-foreground">{driver.explanation[0]}</div>
+                    <div className="mt-1.5 line-clamp-2 text-[11px] leading-5 text-muted-foreground">{driver.explanation[0]}</div>
                   </div>
                 ))}
               </div>
