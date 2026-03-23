@@ -20,18 +20,18 @@ export function SiteShell({
 }) {
   return (
     <div className={cn("relative min-h-screen overflow-hidden bg-background text-foreground", className)}>
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(224,40,66,0.18),transparent_26%),radial-gradient(circle_at_top_left,rgba(255,182,72,0.08),transparent_22%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.03),transparent_24%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-telemetry-grid bg-[size:84px_84px] opacity-[0.08]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(224,40,66,0.2),transparent_24%),radial-gradient(circle_at_top_left,rgba(255,182,72,0.06),transparent_20%),linear-gradient(180deg,rgba(255,255,255,0.02),transparent_18%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-telemetry-grid bg-[size:78px_78px] opacity-[0.09]" />
       <div className="relative mx-auto flex min-h-screen max-w-[1600px] flex-col px-4 pb-8 pt-4 sm:px-6 lg:px-8">
-        <header className="sticky top-4 z-40 mb-8 rounded-[18px] border border-white/8 bg-[rgba(9,11,15,0.82)] px-4 py-3 backdrop-blur-xl">
+        <header className="sticky top-4 z-40 mb-8 rounded-[14px] border border-white/8 bg-[rgba(8,10,14,0.9)] px-4 py-3 shadow-[0_18px_50px_rgba(0,0,0,0.28)] backdrop-blur-xl">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <Link href="/" className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-[12px] border border-primary/25 bg-primary/10 font-display text-sm tracking-[0.28em] text-primary shadow-[0_0_24px_rgba(225,41,68,0.18)]">
+              <div className="flex h-11 w-11 items-center justify-center rounded-[10px] border border-primary/25 bg-primary/10 font-display text-sm tracking-[0.28em] text-primary shadow-[0_0_24px_rgba(225,41,68,0.18)]">
                 OO
               </div>
               <div>
                 <div className="font-display text-sm tracking-[0.24em] text-white">ORYA ONE</div>
-                <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">RaceSim | 2026 Formula 1 strategy wall</div>
+                <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">RaceSim | 2026 Formula 1 strategy wall</div>
               </div>
             </Link>
             <nav className="flex items-center gap-2 text-sm">
@@ -39,14 +39,14 @@ export function SiteShell({
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="rounded-[10px] px-4 py-2 text-muted-foreground transition hover:bg-white/[0.04] hover:text-white focus-visible:bg-white/[0.06]"
+                  className="rounded-[8px] px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground transition hover:bg-white/[0.04] hover:text-white focus-visible:bg-white/[0.06]"
                 >
                   {item.label}
                 </Link>
               ))}
             </nav>
             <div className="flex items-center gap-2">
-              <div className="hidden items-center gap-2 rounded-full border border-white/8 bg-white/[0.03] px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-muted-foreground md:flex">
+              <div className="hidden items-center gap-2 rounded-[999px] border border-white/8 bg-white/[0.03] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground md:flex">
                 <span className="h-2 w-2 rounded-full bg-primary shadow-[0_0_10px_rgba(225,41,68,0.65)]" />
                 Race control online
               </div>
