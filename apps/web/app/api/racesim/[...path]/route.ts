@@ -77,16 +77,32 @@ async function forward(request: NextRequest, path: string[], method: "GET" | "PO
   const url = `${resolveApiBaseUrl()}/${path.join("/")}`;
   const headers = new Headers();
   const contentType = request.headers.get("content-type");
+  const requestPath = path.join("/");
 
   if (contentType) {
     headers.set("content-type", contentType);
+  }
+
+  let body: string | undefined;
+  if (method === "POST") {
+    body = await request.text();
+    if (requestPath === "simulate" && contentType?.includes("application/json") && process.env.NODE_ENV !== "development") {
+      try {
+        const payload = JSON.parse(body) as { simulation_runs?: number };
+        if (typeof payload.simulation_runs === "number" && payload.simulation_runs > 400) {
+          body = JSON.stringify({ ...payload, simulation_runs: 400 });
+        }
+      } catch {
+        // Preserve the raw request body if it is not valid JSON.
+      }
+    }
   }
 
   try {
     const response = await fetch(url, {
       method,
       headers,
-      body: method === "POST" ? await request.text() : undefined,
+      body,
       cache: "no-store",
       signal: AbortSignal.timeout(method === "GET" ? 8000 : 55000),
     });

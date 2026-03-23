@@ -78,8 +78,8 @@ const DEMO_PRESETS = [
     description: "A mixed-condition Spa run with crossover timing, safety-car risk, and a wide strategy range.",
     grand_prix_id: "belgian-grand-prix",
     weather_preset_id: "rain-crossover-threat",
-    simulation_runs: 1200,
-    complexity_level: "high" as const,
+    simulation_runs: 320,
+    complexity_level: "balanced" as const,
     field_strategy_preset: "",
     weights: {
       ...defaultWeights,
@@ -109,7 +109,7 @@ const DEMO_PRESETS = [
     description: "A qualifying-led Monaco setup where pit loss and clean air matter more than passing volume.",
     grand_prix_id: "monaco-grand-prix",
     weather_preset_id: "dry-baseline",
-    simulation_runs: 900,
+    simulation_runs: 240,
     complexity_level: "balanced" as const,
     field_strategy_preset: "qualifying-track-position",
     weights: {
@@ -133,7 +133,7 @@ const DEMO_PRESETS = [
     description: "A low-drag Monza scenario that pushes energy deployment, overtaking windows, and undercut aggression.",
     grand_prix_id: "italian-grand-prix",
     weather_preset_id: "dry-baseline",
-    simulation_runs: 1000,
+    simulation_runs: 280,
     complexity_level: "balanced" as const,
     field_strategy_preset: "",
     weights: {
@@ -912,7 +912,7 @@ export function SimulatorWorkspace() {
         <ControlSection
           eyebrow="05 · Race Simulation"
           title="Race simulation settings"
-          description="Set run depth and calibrate how strongly qualifying, tire wear, deployment, pit loss, and race pace influence the result."
+          description="Set run depth and calibrate how strongly qualifying, tire wear, deployment, pit loss, and race pace influence the result. The live demo is tuned for faster 200-400 run projections."
           icon={SlidersHorizontal}
         >
           <div className="grid gap-4 sm:grid-cols-2">
@@ -926,6 +926,9 @@ export function SimulatorWorkspace() {
                 onChange={(event) => setForm({ ...form, simulation_runs: Number(event.target.value) })}
                 className="rounded-[12px] border border-white/10 bg-[#090c11] px-4 py-3 text-sm text-white outline-none focus:border-primary/60"
               />
+              <span className="text-xs leading-5 text-muted-foreground">
+                200-400 runs is the best range for the public deployment. Higher values are useful locally, but they can hit backend time limits on a cold host.
+              </span>
             </label>
             <SelectField
               label="Simulation detail"
