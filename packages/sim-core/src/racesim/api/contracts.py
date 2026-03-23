@@ -97,6 +97,7 @@ class DriverResult(BaseModel):
     expected_pace_score: float
     explanation: list[str]
     position_distribution: list[PositionProbability]
+    diagnostics: dict[str, float]
 
 
 class EventSummary(BaseModel):

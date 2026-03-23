@@ -32,6 +32,7 @@ def test_simulation_endpoint():
     assert "confidence_note" in payload["scenario"]
     assert "impact_summary" in payload["event_summary"]
     assert "expected_points" in payload["drivers"][0]
+    assert "diagnostics" in payload["drivers"][0]
 
 
 def test_invalid_grand_prix_returns_404():

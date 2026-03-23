@@ -29,11 +29,22 @@ class DriverStaticProfile:
     strategy: StrategyTemplate
     strategy_fit: StrategyFit
     pace_score: float
+    raw_pace_score: float
+    team_baseline: float
+    pace_edge: float
+    track_fit_score: float
+    chaos_resilience: float
     energy_strength: float
     event_exposure: float
     qualifying_leverage: float
     tire_risk: float
     pace_rank: int
+
+
+@dataclass
+class PerformanceResolution:
+    total_score: float
+    diagnostics: dict[str, float]
 
 
 RACE_POINTS = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1]
@@ -90,9 +101,11 @@ class SimulationService:
         event_tallies = Counter()
         incident_time_totals: Counter[str] = Counter()
         event_pressure_totals: Counter[str] = Counter()
+        diagnostic_totals: dict[str, Counter[str]] = defaultdict(Counter)
+        last_sigma: dict[str, float] = {}
 
         for run_index in range(request.simulation_runs):
-            rng = random.Random(1307 + run_index)
+            rng = random.Random(self._scenario_seed(request, track, weather) + run_index * 37)
             event_engine = EventEngine(rng)
             events = event_engine.race_events(track, weather, request.environment)
             self._record_race_events(event_tallies, events)
@@ -100,7 +113,8 @@ class SimulationService:
             run_results: list[tuple[str, float, DriverIncident]] = []
             for driver_id, profile in profiles.items():
                 incident = event_engine.driver_incident(profile.driver, track, weather, request.environment, events)
-                performance_index = self._resolve_driver_performance(profile, track, weather, request, events, incident, rng)
+                resolution = self._resolve_driver_performance(profile, track, weather, request, events, incident, rng)
+                performance_index = resolution.total_score
 
                 total_time = track.base_race_time_sec - performance_index
                 if incident.dnf:
@@ -111,6 +125,9 @@ class SimulationService:
                 run_results.append((driver_id, total_time, incident))
                 incident_time_totals[driver_id] += incident.time_loss_sec if not incident.dnf else 0.0
                 event_pressure_totals[driver_id] += events.event_pressure
+                for key, value in resolution.diagnostics.items():
+                    diagnostic_totals[driver_id][key] += value
+                last_sigma[driver_id] = resolution.diagnostics["stochastic_sigma"]
 
             ranked = sorted(run_results, key=lambda item: item[1])
             for position, (driver_id, _, incident) in enumerate(ranked, start=1):
@@ -127,6 +144,8 @@ class SimulationService:
             strategy_success=strategy_success,
             incident_time_totals=incident_time_totals,
             event_pressure_totals=event_pressure_totals,
+            diagnostic_totals=diagnostic_totals,
+            last_sigma=last_sigma,
             suggestions=suggestion_map,
             track=track,
             weather=weather,
@@ -171,7 +190,7 @@ class SimulationService:
             strategy_fit = evaluate_strategy(driver, track, weather, strategy, request.weights, request.environment)
             team = get_team(driver.team_id)
             team_baseline = (team.race_pace - 80.0) * 0.55 + (team.qualifying_pace - 80.0) * 0.18
-            pace_score = self.predictor.predict(build_feature_vector(driver, track, weather)) + team_baseline
+            raw_pace_score = self.predictor.predict(build_feature_vector(driver, track, weather)) + team_baseline
             energy_strength = min(
                 1.0,
                 (
@@ -195,13 +214,20 @@ class SimulationService:
                 * (0.72 + team.qualifying_pace / 250.0)
             )
             tire_risk = track.tire_stress * strategy.tire_load * (1.04 - driver.tire_management / 100.0)
+            track_fit_score = self._track_fit_score(driver, team, track, weather)
+            chaos_resilience = self._chaos_resilience(driver, team)
             raw_profiles.append(
                 DriverStaticProfile(
                     driver=driver,
                     team_name=team.name,
                     strategy=strategy,
                     strategy_fit=strategy_fit,
-                    pace_score=pace_score,
+                    pace_score=0.0,
+                    raw_pace_score=raw_pace_score,
+                    team_baseline=team_baseline,
+                    pace_edge=0.0,
+                    track_fit_score=track_fit_score,
+                    chaos_resilience=chaos_resilience,
                     energy_strength=energy_strength,
                     event_exposure=event_exposure,
                     qualifying_leverage=qualifying_leverage,
@@ -210,7 +236,33 @@ class SimulationService:
                 )
             )
 
-        ranked = sorted(raw_profiles, key=lambda item: item.pace_score + item.strategy_fit.score * 0.42, reverse=True)
+        raw_scores = [profile.raw_pace_score for profile in raw_profiles]
+        mean_raw = sum(raw_scores) / len(raw_scores)
+        variance_raw = sum((score - mean_raw) ** 2 for score in raw_scores) / len(raw_scores)
+        std_raw = math.sqrt(max(variance_raw, 1e-6))
+
+        for profile in raw_profiles:
+            pace_edge = ((profile.raw_pace_score - mean_raw) / std_raw) * 0.78
+            profile.pace_edge = max(-1.6, min(1.6, pace_edge))
+            profile.pace_score = round(
+                62.0
+                + profile.pace_edge * 4.8
+                + profile.track_fit_score * 0.9
+                + (profile.strategy_fit.score - 50.0) * 0.08,
+                2,
+            )
+
+        ranked = sorted(
+            raw_profiles,
+            key=lambda item: (
+                item.pace_edge * 8.8
+                + item.track_fit_score * 1.6
+                + (item.strategy_fit.score - 50.0) * 0.34
+                + item.qualifying_leverage * (1.3 + track.qualifying_importance * 1.1)
+                - item.tire_risk * 5.0
+            ),
+            reverse=True,
+        )
         for index, profile in enumerate(ranked, start=1):
             profile.pace_rank = index
         return {profile.driver.id: profile for profile in raw_profiles}
@@ -234,14 +286,20 @@ class SimulationService:
         events: RaceEvents,
         incident: DriverIncident,
         rng: random.Random,
-    ) -> float:
+    ) -> PerformanceResolution:
         team = get_team(profile.driver.team_id)
-        pace_component = profile.pace_score * (0.7 + request.weights.driver_form_weight * 0.45)
+        pace_component = profile.pace_edge * (8.2 + request.weights.driver_form_weight * 5.8)
+        track_fit_bonus = profile.track_fit_score * (
+            0.94 + track.strategy_flexibility * 0.14 + request.weights.driver_form_weight * 0.16
+        )
+        strategy_component = (profile.strategy_fit.score - 50.0) * (
+            0.28 + track.strategy_flexibility * 0.14 + events.event_pressure * 0.08
+        )
         qualifying_bonus = (
             profile.qualifying_leverage
             * request.weights.qualifying_importance
-            * (0.82 + profile.strategy.qualifying_bias * 0.24)
-            * 14.5
+            * (0.84 + profile.strategy.qualifying_bias * 0.28 + track.track_position_importance * 0.2)
+            * 16.5
         )
         overtaking_bonus = (
             (profile.driver.overtaking / 100.0)
@@ -249,7 +307,7 @@ class SimulationService:
             * (0.74 + profile.energy_strength * 0.3)
             * events.overtaking_window
             * request.weights.overtaking_sensitivity
-            * 10.0
+            * (9.0 + track.strategy_flexibility * 3.4)
         )
         energy_bonus = (
             profile.energy_strength
@@ -257,13 +315,31 @@ class SimulationService:
             * request.weights.energy_deployment_weight
             * request.environment.energy_deployment_intensity
             * events.overtaking_window
-            * 12.0
+            * (7.2 + track.energy_sensitivity * 7.5)
+        )
+        track_position_bonus = (
+            profile.strategy.track_position_bias
+            * track.track_position_importance
+            * request.weights.qualifying_importance
+            * (profile.driver.qualifying_strength / 100.0)
+            * 5.2
+        )
+        flexibility_bonus = (
+            profile.strategy.flexibility
+            * events.event_pressure
+            * (2.2 + track.strategy_flexibility * 3.0 + 0.8 * int(events.safety_car or events.vsc))
+        )
+        chaos_bonus = (
+            profile.chaos_resilience
+            * events.event_pressure
+            * request.weights.reliability_sensitivity
+            * (4.4 + request.environment.randomness_intensity * 5.0)
         )
         tire_penalty = (
             profile.tire_risk
             * request.weights.tire_wear_weight
             * events.degradation_multiplier
-            * 27.0
+            * 31.0
         )
         fuel_penalty = (
             track.fuel_sensitivity
@@ -274,26 +350,26 @@ class SimulationService:
                 + profile.strategy.energy_bias * 0.06
             )
             * request.weights.fuel_effect_weight
-            * 8.6
+            * 9.4
         )
         energy_penalty = (
             track.energy_sensitivity
             * (1.0 - profile.energy_strength * 0.86)
             * request.weights.energy_deployment_weight
             * events.energy_management_multiplier
-            * (4.8 + profile.strategy.aggression * 3.8)
+            * (5.2 + profile.strategy.aggression * 4.4)
         )
         track_evolution_bonus = (
             request.environment.track_evolution
             * track.surface_evolution
             * (profile.driver.consistency / 100.0)
-            * 3.2
+            * 3.8
         )
         temperature_penalty = (
             request.environment.temperature_variation
             * track.tire_stress
             * (1.04 - profile.driver.tire_management / 100.0)
-            * 4.1
+            * 4.6
         )
         pit_penalty = (
             profile.strategy.pit_stop_count
@@ -305,7 +381,12 @@ class SimulationService:
         reliability_penalty = (
             (1.0 - (profile.driver.reliability / 100.0) * team.reliability_base)
             * request.weights.reliability_sensitivity
-            * (11.0 + events.event_pressure * 5.0)
+            * (11.5 + events.event_pressure * 6.2)
+        )
+        risk_penalty = (
+            max(0.0, profile.event_exposure - profile.chaos_resilience * 0.72)
+            * request.weights.reliability_sensitivity
+            * (3.2 + events.event_pressure * 5.0)
         )
         weather_bonus = 0.0
         if events.wet_start or events.weather_shift:
@@ -318,24 +399,31 @@ class SimulationService:
             weather_bonus += profile.strategy.qualifying_bias * 1.8
 
         compression_penalty = (
-            profile.pace_score
-            * 0.028
-            * events.event_pressure
-            * (1.0 if events.safety_car or events.vsc else 0.55)
+            max(0.0, profile.pace_edge)
+            * (1.2 + events.event_pressure * 2.2 + request.environment.randomness_intensity * 1.1)
+            * (1.0 if events.safety_car or events.vsc else 0.72)
+        )
+        stochastic_sigma = (
+            5.4
+            * request.weights.stochastic_variance
+            * (0.88 + request.environment.randomness_intensity * 0.62 + events.event_pressure * 0.28)
+            * (0.92 + max(0.0, 0.52 - profile.chaos_resilience) * 0.85)
         )
         variance = rng.gauss(
             0.0,
-            4.8
-            * request.weights.stochastic_variance
-            * (0.85 + request.environment.randomness_intensity * 0.55 + events.event_pressure * 0.2),
+            stochastic_sigma,
         )
 
-        return (
+        total_score = (
             pace_component
-            + profile.strategy_fit.score * 0.5
+            + track_fit_bonus
+            + strategy_component
             + qualifying_bonus
             + overtaking_bonus
             + energy_bonus
+            + track_position_bonus
+            + flexibility_bonus
+            + chaos_bonus
             + weather_bonus
             + track_evolution_bonus
             - tire_penalty
@@ -344,9 +432,38 @@ class SimulationService:
             - temperature_penalty
             - pit_penalty
             - reliability_penalty
+            - risk_penalty
             - compression_penalty
             - incident.time_loss_sec
             + variance
+        )
+        return PerformanceResolution(
+            total_score=total_score,
+            diagnostics={
+                "pace_component": pace_component,
+                "track_fit_bonus": track_fit_bonus,
+                "strategy_component": strategy_component,
+                "qualifying_bonus": qualifying_bonus,
+                "overtaking_bonus": overtaking_bonus,
+                "energy_bonus": energy_bonus,
+                "track_position_bonus": track_position_bonus,
+                "flexibility_bonus": flexibility_bonus,
+                "chaos_bonus": chaos_bonus,
+                "weather_event_bonus": weather_bonus,
+                "track_evolution_bonus": track_evolution_bonus,
+                "tire_penalty": tire_penalty,
+                "fuel_penalty": fuel_penalty,
+                "energy_penalty": energy_penalty,
+                "temperature_penalty": temperature_penalty,
+                "pit_penalty": pit_penalty,
+                "reliability_penalty": reliability_penalty,
+                "risk_penalty": risk_penalty,
+                "compression_penalty": compression_penalty,
+                "incident_penalty": incident.time_loss_sec,
+                "stochastic_contribution": variance,
+                "stochastic_sigma": stochastic_sigma,
+                "projected_score": total_score,
+            },
         )
 
     def _build_driver_results(
@@ -357,6 +474,8 @@ class SimulationService:
         strategy_success: Counter[str],
         incident_time_totals: Counter[str],
         event_pressure_totals: Counter[str],
+        diagnostic_totals: dict[str, Counter[str]],
+        last_sigma: dict[str, float],
         suggestions: dict,
         track: TrackProfile,
         weather: WeatherPreset,
@@ -418,11 +537,70 @@ class SimulationService:
                         mean_event_pressure=event_pressure_totals[driver_id] / max(1, request.simulation_runs),
                     ),
                     position_distribution=distribution,
+                    diagnostics={
+                        key: round(value / request.simulation_runs, 4)
+                        for key, value in diagnostic_totals[driver_id].items()
+                        if key != "stochastic_sigma"
+                    }
+                    | {
+                        "raw_pace_score": round(profile.raw_pace_score, 4),
+                        "team_baseline": round(profile.team_baseline, 4),
+                        "pace_edge": round(profile.pace_edge, 4),
+                        "track_fit_score": round(profile.track_fit_score, 4),
+                        "chaos_resilience": round(profile.chaos_resilience, 4),
+                        "event_exposure": round(profile.event_exposure, 4),
+                        "stochastic_sigma": round(last_sigma[driver_id], 4),
+                    },
                 )
             )
 
         driver_results.sort(key=lambda item: item.expected_finish_position)
         return driver_results
+
+    def _track_fit_score(
+        self,
+        driver: DriverProfile,
+        team,
+        track: TrackProfile,
+        weather: WeatherPreset,
+    ) -> float:
+        weather_pressure = max(track.weather_volatility, weather.rain_onset_probability)
+        qualifying_fit = ((driver.qualifying_strength / 100.0) - 0.82) * track.qualifying_importance * 14.0
+        tire_fit = ((driver.tire_management / 100.0) - 0.8) * track.tire_stress * 13.0
+        overtake_fit = ((driver.overtaking / 100.0) - 0.8) * (1.0 - track.overtaking_difficulty) * 12.0
+        energy_fit = (
+            ((driver.energy_management / 100.0) * 0.6 + team.energy_efficiency * 0.4 - 0.82)
+            * track.energy_sensitivity
+            * 13.5
+        )
+        wet_fit = ((driver.wet_weather_skill / 100.0) - 0.79) * weather_pressure * 11.0
+        consistency_fit = ((driver.consistency / 100.0) - 0.82) * track.surface_evolution * 9.0
+        return qualifying_fit + tire_fit + overtake_fit + energy_fit + wet_fit + consistency_fit
+
+    def _chaos_resilience(self, driver: DriverProfile, team) -> float:
+        return min(
+            1.0,
+            max(
+                0.0,
+                (driver.reliability / 100.0) * 0.3
+                + (driver.consistency / 100.0) * 0.24
+                + (driver.wet_weather_skill / 100.0) * 0.18
+                + (driver.tire_management / 100.0) * 0.14
+                + team.reliability_base * 0.14,
+            ),
+        )
+
+    def _scenario_seed(self, request: SimulationRequest, track: TrackProfile, weather: WeatherPreset) -> int:
+        serial = [
+            track.id,
+            weather.id,
+            request.complexity_level,
+            str(request.simulation_runs),
+            *(f"{value:.3f}" for value in request.weights.model_dump().values()),
+            *(f"{value:.3f}" for value in request.environment.model_dump().values()),
+            *(sorted(request.strategies.values())),
+        ]
+        return 1307 + sum((index + 1) * sum(ord(char) for char in item) for index, item in enumerate(serial))
 
     def _build_team_summary(self, driver_results: list[DriverResult]) -> list[TeamSummary]:
         grouped_team_results: dict[str, list[DriverResult]] = defaultdict(list)
