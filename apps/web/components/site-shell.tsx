@@ -26,12 +26,12 @@ export function SiteShell({
         <header className="sticky top-4 z-40 mb-8 rounded-[18px] border border-white/8 bg-[rgba(9,11,15,0.82)] px-4 py-3 backdrop-blur-xl">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <Link href="/" className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-[12px] border border-primary/25 bg-primary/10 font-display text-sm tracking-[0.28em] text-primary">
+              <div className="flex h-11 w-11 items-center justify-center rounded-[12px] border border-primary/25 bg-primary/10 font-display text-sm tracking-[0.28em] text-primary shadow-[0_0_24px_rgba(225,41,68,0.18)]">
                 OO
               </div>
               <div>
                 <div className="font-display text-sm tracking-[0.24em] text-white">ORYA ONE</div>
-                <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">RaceSim | 2026 Formula 1 strategy</div>
+                <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">RaceSim | 2026 Formula 1 strategy wall</div>
               </div>
             </Link>
             <nav className="flex items-center gap-2 text-sm">
@@ -39,13 +39,19 @@ export function SiteShell({
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="rounded-[10px] px-4 py-2 text-muted-foreground transition hover:bg-white/[0.04] hover:text-white"
+                  className="rounded-[10px] px-4 py-2 text-muted-foreground transition hover:bg-white/[0.04] hover:text-white focus-visible:bg-white/[0.06]"
                 >
                   {item.label}
                 </Link>
               ))}
             </nav>
-            <Badge variant="muted">2026 season MVP</Badge>
+            <div className="flex items-center gap-2">
+              <div className="hidden items-center gap-2 rounded-full border border-white/8 bg-white/[0.03] px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-muted-foreground md:flex">
+                <span className="h-2 w-2 rounded-full bg-primary shadow-[0_0_10px_rgba(225,41,68,0.65)]" />
+                Race control online
+              </div>
+              <Badge variant="muted">2026 season MVP</Badge>
+            </div>
           </div>
         </header>
         <main className="flex-1">{children}</main>

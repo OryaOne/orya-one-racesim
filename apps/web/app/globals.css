@@ -16,6 +16,12 @@
   --border: 220 14% 18%;
   --input: 220 14% 18%;
   --ring: 357 84% 57%;
+  --panel: rgba(13, 16, 22, 0.88);
+  --panel-strong: rgba(10, 12, 18, 0.96);
+  --signal-red: 357 84% 57%;
+  --signal-amber: 39 86% 57%;
+  --signal-green: 152 68% 45%;
+  --signal-steel: 214 14% 58%;
 }
 
 * {
@@ -35,6 +41,7 @@ body {
     radial-gradient(circle at top left, rgba(255, 184, 77, 0.08), transparent 26%),
     linear-gradient(180deg, rgba(8, 10, 14, 0.98), rgba(6, 8, 11, 1));
   color: hsl(var(--foreground));
+  min-height: 100dvh;
 }
 
 body::before {
@@ -64,6 +71,39 @@ a {
   text-decoration: none;
 }
 
+:focus-visible {
+  outline: 2px solid hsla(var(--ring), 0.95);
+  outline-offset: 2px;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(225, 41, 68, 0.32) rgba(255, 255, 255, 0.04);
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+*::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(225, 41, 68, 0.35);
+  border: 2px solid rgba(6, 8, 11, 0.9);
+}
+
+details > summary {
+  list-style: none;
+}
+
+details > summary::-webkit-details-marker {
+  display: none;
+}
+
 ::selection {
   background: rgba(255, 58, 84, 0.32);
 }
@@ -77,4 +117,18 @@ input::-webkit-inner-spin-button {
 input[type="number"] {
   appearance: textfield;
   -moz-appearance: textfield;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

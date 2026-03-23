@@ -4,14 +4,19 @@ import { Badge } from "@/components/ui/badge";
 export default function SimulatorPage() {
   return (
     <div className="space-y-6 pb-10">
-      <div className="max-w-3xl">
-        <Badge>2026 Formula 1 strategy workspace</Badge>
-        <h1 className="mt-4 font-display text-[clamp(2.4rem,5vw,4rem)] leading-[0.98] tracking-[-0.04em] text-white">
-          Build a 2026 Grand Prix weekend, shape the race, and project the finish.
-        </h1>
-        <p className="mt-4 text-base leading-7 text-muted-foreground">
-          Set circuit assumptions, qualifying influence, tire degradation, safety-car risk, energy deployment pressure, and stint strategy from a single pit-wall workspace.
-        </p>
+      <div className="flex flex-col gap-4 rounded-[22px] border border-white/8 bg-[linear-gradient(180deg,rgba(17,20,26,0.88),rgba(10,12,16,0.96))] px-5 py-5 sm:px-6">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge>2026 Formula 1 strategy workspace</Badge>
+          <Badge variant="muted">Pit-wall dashboard</Badge>
+        </div>
+        <div className="max-w-4xl">
+          <h1 className="font-display text-[clamp(2.2rem,4.6vw,3.8rem)] leading-[0.96] tracking-[-0.05em] text-white">
+            Build the weekend, run the race, and read the board like a strategy wall.
+          </h1>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
+            Grand Prix setup, race-control assumptions, stint calls, and outcome projection are organized into one compact 2026 Formula 1 command center.
+          </p>
+        </div>
       </div>
       <SimulatorWorkspace />
     </div>

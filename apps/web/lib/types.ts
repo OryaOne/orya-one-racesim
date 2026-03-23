@@ -167,6 +167,7 @@ export type DriverResult = {
   expected_pace_score: number;
   explanation: string[];
   position_distribution: PositionProbability[];
+  diagnostics: Record<string, number>;
 };
 
 export type TeamSummary = {
