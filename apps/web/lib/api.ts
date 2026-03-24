@@ -1,9 +1,32 @@
 const API_PROXY_URL = "/api/racesim";
 
+function normalizeApiErrorMessage(text: string, status: number): string {
+  const trimmed = text.trim();
+  const lower = trimmed.toLowerCase();
+
+  if (!trimmed) {
+    return "API request failed";
+  }
+
+  if (lower.startsWith("<!doctype html") || lower.startsWith("<html")) {
+    if (status === 502) {
+      return "The RaceSim backend is temporarily unavailable. Render returned a bad gateway response.";
+    }
+
+    if (status === 503 || status === 504) {
+      return "The RaceSim backend is temporarily unavailable. Wait a moment and try again.";
+    }
+
+    return "The RaceSim backend returned an unexpected HTML error response.";
+  }
+
+  return trimmed;
+}
+
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const text = await response.text();
-    let message = text || "API request failed";
+    let message = normalizeApiErrorMessage(text, response.status);
     try {
       const payload = JSON.parse(text) as { detail?: string };
       message = payload.detail || message;

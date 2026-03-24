@@ -20,7 +20,20 @@ function resolveApiBaseUrl() {
   return value;
 }
 
-function normalizeBackendError(text: string, status: number) {
+function isHtmlErrorPayload(text: string, contentType: string | null) {
+  if (contentType?.toLowerCase().includes("text/html")) {
+    return true;
+  }
+
+  const trimmed = text.trimStart().toLowerCase();
+  return trimmed.startsWith("<!doctype html") || trimmed.startsWith("<html");
+}
+
+function normalizeBackendError(
+  text: string,
+  status: number,
+  contentType: string | null,
+) {
   const lower = text.toLowerCase();
   if (
     lower.includes("sample catalog") ||
@@ -34,6 +47,36 @@ function normalizeBackendError(text: string, status: number) {
           "The backend deployment is still on the old fictional season data. Redeploy the Render API from the latest main branch to run 2026 Formula 1 simulations.",
       },
       { status: 503 },
+    );
+  }
+
+  if (status === 502 || isHtmlErrorPayload(text, contentType)) {
+    return NextResponse.json(
+      {
+        detail:
+          "The RaceSim backend is temporarily unavailable. Render returned a bad gateway response. Wait a moment and try again.",
+      },
+      { status: 502 },
+    );
+  }
+
+  if (status === 503) {
+    return NextResponse.json(
+      {
+        detail:
+          "The RaceSim backend is temporarily unavailable. If Render is redeploying or waking from cold start, try again in a moment.",
+      },
+      { status: 503 },
+    );
+  }
+
+  if (status === 504) {
+    return NextResponse.json(
+      {
+        detail:
+          "The RaceSim backend timed out before the proxy received a complete response. Try again in a moment.",
+      },
+      { status: 504 },
     );
   }
 
@@ -116,7 +159,7 @@ async function forward(request: NextRequest, path: string[], method: "GET" | "PO
     }
 
     if (!response.ok) {
-      return normalizeBackendError(text, response.status);
+      return normalizeBackendError(text, response.status, responseType);
     }
 
     return new NextResponse(text, {
