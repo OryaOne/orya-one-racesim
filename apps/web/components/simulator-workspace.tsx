@@ -353,7 +353,7 @@ function StatusChip({
   variant?: "default" | "muted" | "success" | "warning" | "info";
 }) {
   return (
-    <div className="flex min-w-0 w-full items-center gap-2 rounded-[999px] border border-white/8 bg-black/30 px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+    <div className="flex min-w-0 max-w-full items-center gap-2 rounded-[999px] border border-white/8 bg-black/30 px-2.5 py-1.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
       <span className="shrink-0">
         <span
           className={`h-1.5 w-1.5 rounded-full ${
@@ -369,8 +369,8 @@ function StatusChip({
           }`}
         />
       </span>
-      <span className="min-w-0 flex-1 truncate">{label}</span>
-      <Badge variant={variant} className="shrink-0 px-2 py-0.5 text-[9px]">
+      <span className="truncate">{label}</span>
+      <Badge variant={variant} className="max-w-full shrink min-w-0 truncate px-2 py-0.5 text-[9px]">
         {value}
       </Badge>
     </div>
@@ -652,28 +652,28 @@ function ControlRailNav({
 
 function TimingStrip({ drivers }: { drivers: DriverResult[] }) {
   return (
-    <div className="grid gap-2 2xl:grid-cols-2">
+    <div className="grid gap-1.5 md:grid-cols-2">
       {drivers.map((driver, index) => (
         <div
           key={driver.driver_id}
-          className="grid grid-cols-[36px_minmax(0,1fr)_repeat(3,54px)] items-center gap-2 rounded-[10px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))] px-2.5 py-2"
+          className="grid grid-cols-[28px_minmax(0,1fr)_repeat(3,48px)] items-center gap-1.5 rounded-[10px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))] px-2 py-1.5 md:grid-cols-[30px_minmax(0,1fr)_repeat(3,50px)]"
         >
-          <div className="font-display text-[1.05rem] leading-none text-white">P{index + 1}</div>
+          <div className="font-display text-[1rem] leading-none text-white">P{index + 1}</div>
           <div className="min-w-0">
-            <div className="truncate text-[13px] leading-none text-white">{driver.driver_name}</div>
-            <div className="mt-1 truncate font-mono text-[8px] uppercase tracking-[0.16em] text-muted-foreground">{driver.team_name}</div>
+            <div className="truncate text-[12px] text-white">{driver.driver_name}</div>
+            <div className="mt-0.5 truncate font-mono text-[8px] uppercase tracking-[0.16em] text-muted-foreground">{driver.team_name}</div>
           </div>
-          <div className="rounded-[8px] border border-white/8 bg-black/25 px-1.5 py-1.5 text-center">
+          <div className="rounded-[8px] border border-white/8 bg-black/25 px-1.5 py-1 text-center">
             <div className="font-mono text-[8px] uppercase tracking-[0.16em] text-muted-foreground">Win</div>
-            <div className="mt-1 text-[11px] leading-none text-white">{formatPct(driver.win_probability)}</div>
+            <div className="mt-0.5 text-[11px] leading-none text-white">{formatPct(driver.win_probability)}</div>
           </div>
-          <div className="rounded-[8px] border border-white/8 bg-black/25 px-1.5 py-1.5 text-center">
+          <div className="rounded-[8px] border border-white/8 bg-black/25 px-1.5 py-1 text-center">
             <div className="font-mono text-[8px] uppercase tracking-[0.16em] text-muted-foreground">Pts</div>
-            <div className="mt-1 text-[11px] leading-none text-white">{driver.expected_points.toFixed(1)}</div>
+            <div className="mt-0.5 text-[11px] leading-none text-white">{driver.expected_points.toFixed(1)}</div>
           </div>
-          <div className="rounded-[8px] border border-white/8 bg-black/25 px-1.5 py-1.5 text-center">
+          <div className="rounded-[8px] border border-white/8 bg-black/25 px-1.5 py-1 text-center">
             <div className="font-mono text-[8px] uppercase tracking-[0.16em] text-muted-foreground">Fit</div>
-            <div className="mt-1 text-[11px] leading-none text-white">{driver.strategy_fit_score.toFixed(1)}</div>
+            <div className="mt-0.5 text-[11px] leading-none text-white">{driver.strategy_fit_score.toFixed(1)}</div>
           </div>
         </div>
       ))}
@@ -948,7 +948,7 @@ export function SimulatorWorkspace() {
                 </div>
               </div>
 
-              <div className="flex w-full flex-col gap-2.5 xl:w-[392px] 2xl:w-[428px]">
+              <div className="flex w-full flex-col gap-2.5 xl:w-[360px] 2xl:w-[384px]">
                 <div className="grid gap-2 sm:grid-cols-2">
                   <Button className="w-full justify-center" onClick={() => void executeSimulation()} disabled={loadingSimulation}>
                     {loadingSimulation ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
@@ -965,9 +965,7 @@ export function SimulatorWorkspace() {
                   </Button>
                 </div>
                 <div className="grid gap-2 rounded-[10px] border border-white/8 bg-white/[0.03] px-3 py-2.5 sm:grid-cols-2">
-                  <div className="sm:col-span-2">
-                    <StatusChip label="Weekend" value={activeWeather.label} variant="info" />
-                  </div>
+                  <StatusChip label="Weekend" value={activeWeather.label} variant="info" />
                   <StatusChip label="Chaos" value={`${Math.round(form.environment.randomness_intensity * 100)}`} variant={signalVariant(form.environment.randomness_intensity)} />
                   <StatusChip label="Quali" value={`${Math.round(form.weights.qualifying_importance * 100)}`} variant="info" />
                   <StatusChip label="Track pos" value={`${Math.round(activeTrack.track_position_importance * 100)}`} variant="info" />
@@ -976,7 +974,7 @@ export function SimulatorWorkspace() {
               </div>
             </div>
 
-            <div className="mt-3 grid gap-2 xl:grid-cols-[1.48fr_0.78fr] 2xl:grid-cols-[1.58fr_0.74fr]">
+            <div className="mt-3 grid gap-2 xl:grid-cols-[1.52fr_0.71fr] 2xl:grid-cols-[1.65fr_0.68fr]">
               <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
                 <HeaderMetric
                   label="Lead car"
