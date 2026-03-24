@@ -158,7 +158,7 @@ const tooltipStyle = {
   color: "#f4f6f8",
 } as const;
 
-const distributionColors = ["#ff415f", "#f7bb43", "#31c48d", "#98a4b3", "#ff875f", "#6d7683"];
+const distributionColors = ["#ff415f", "#f7bb43", "#31c48d", "#67e8f9", "#94a3b8", "#6d7683"];
 
 function buildInitialOverrides(driverIds: string[]): DriverOverride[] {
   return driverIds.map((driverId) => ({
@@ -233,7 +233,7 @@ function badgeVariantForConfidence(value: DriverResult["confidence_label"]) {
     return "success";
   }
   if (value === "Measured") {
-    return "muted";
+    return "info";
   }
   return "warning";
 }
@@ -243,9 +243,9 @@ function badgeVariantForRisk(value: StrategySuggestion["risk_profile"]) {
     return "success";
   }
   if (value === "Balanced") {
-    return "muted";
+    return "warning";
   }
-  return "warning";
+  return "default";
 }
 
 function sliderLabel(value: number) {
@@ -271,24 +271,40 @@ function volatilityLabel(value: number) {
   return "Volatile";
 }
 
-function signalVariant(value: number): "success" | "muted" | "warning" {
+function signalVariant(value: number): "success" | "warning" | "default" {
   if (value < 0.34) {
     return "success";
   }
   if (value < 0.58) {
-    return "muted";
+    return "warning";
   }
-  return "warning";
+  return "default";
 }
 
-function signalColor(value: number) {
-  if (value < 0.34) {
+function telemetryVariant(value: number): "info" | "warning" | "default" {
+  if (value < 0.42) {
+    return "info";
+  }
+  if (value < 0.7) {
+    return "warning";
+  }
+  return "default";
+}
+
+function signalColor(value: number, tone: "default" | "muted" | "success" | "warning" | "info" = signalVariant(value)) {
+  if (tone === "success") {
     return "bg-emerald-400";
   }
-  if (value < 0.58) {
+  if (tone === "warning") {
     return "bg-amber-300";
   }
-  return "bg-primary";
+  if (tone === "info") {
+    return "bg-cyan-300";
+  }
+  if (tone === "default") {
+    return "bg-primary";
+  }
+  return "bg-slate-400";
 }
 
 function compactNumber(value: number) {
@@ -314,7 +330,7 @@ function SectionFrame({
         <div className="flex items-start justify-between gap-4">
           <div>
             {eyebrow ? (
-              <div className="text-[10px] uppercase tracking-[0.24em] text-primary/90">{eyebrow}</div>
+              <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">{eyebrow}</div>
             ) : null}
             <CardTitle className="mt-1.5 font-display text-[0.95rem] uppercase tracking-[0.08em] text-white">{title}</CardTitle>
             {subtitle ? <CardDescription className="mt-0.5 text-[11px] leading-5 text-muted-foreground/75">{subtitle}</CardDescription> : null}
@@ -334,13 +350,21 @@ function StatusChip({
 }: {
   label: string;
   value: string;
-  variant?: "default" | "muted" | "success" | "warning";
+  variant?: "default" | "muted" | "success" | "warning" | "info";
 }) {
   return (
     <div className="flex items-center gap-2 rounded-[999px] border border-white/8 bg-black/30 px-3 py-1.5 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
       <span
         className={`h-1.5 w-1.5 rounded-full ${
-          variant === "success" ? "bg-emerald-400" : variant === "warning" ? "bg-amber-300" : variant === "default" ? "bg-primary" : "bg-white/30"
+          variant === "success"
+            ? "bg-emerald-400"
+            : variant === "warning"
+              ? "bg-amber-300"
+              : variant === "info"
+                ? "bg-cyan-300"
+                : variant === "default"
+                  ? "bg-primary"
+                  : "bg-white/30"
         }`}
       />
       <span>{label}</span>
@@ -360,14 +384,14 @@ function HeaderMetric({
   label: string;
   value: string;
   detail: string;
-  tone?: "muted" | "default" | "success" | "warning";
+  tone?: "muted" | "default" | "success" | "warning" | "info";
 }) {
   return (
     <div className="rounded-[10px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))] p-3">
       <div className="flex items-center justify-between gap-2">
         <div className="text-[9px] uppercase tracking-[0.22em] text-muted-foreground">{label}</div>
         <Badge variant={tone} className="px-2 py-0.5 text-[8px]">
-          {tone === "default" ? "Attack" : tone === "success" ? "Stable" : tone === "warning" ? "Risk" : "Live"}
+          {tone === "default" ? "Attack" : tone === "success" ? "Stable" : tone === "warning" ? "Caution" : tone === "info" ? "Info" : "Neutral"}
         </Badge>
       </div>
       <div className="mt-2 truncate font-display text-[1.15rem] leading-none text-white">{value}</div>
@@ -443,10 +467,12 @@ function SignalMeter({
   label,
   value,
   secondary,
+  tone,
 }: {
   label: string;
   value: number;
   secondary?: string;
+  tone?: "default" | "muted" | "success" | "warning" | "info";
 }) {
   return (
     <div className="space-y-2">
@@ -456,7 +482,7 @@ function SignalMeter({
       </div>
       <div className="h-1.5 rounded-full bg-white/8">
         <div
-          className={`h-1.5 rounded-full ${signalColor(value)}`}
+          className={`h-1.5 rounded-full ${signalColor(value, tone)}`}
           style={{ width: `${Math.max(6, Math.min(100, value * 100))}%` }}
         />
       </div>
@@ -469,18 +495,30 @@ function InsightCard({
   subtitle,
   icon: Icon,
   children,
+  tone = "info",
 }: {
   title: string;
   subtitle?: string;
   icon: ComponentType<{ className?: string }>;
   children: ReactNode;
+  tone?: "default" | "muted" | "success" | "warning" | "info";
 }) {
+  const toneClasses =
+    tone === "default"
+      ? "border-primary/15 bg-primary/10 text-primary"
+      : tone === "warning"
+        ? "border-amber-300/20 bg-amber-300/10 text-amber-200"
+        : tone === "success"
+          ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-300"
+          : tone === "info"
+            ? "border-cyan-300/20 bg-cyan-300/10 text-cyan-200"
+            : "border-white/10 bg-white/[0.04] text-muted-foreground";
   return (
     <Card className="rounded-[14px] border border-white/8 bg-[linear-gradient(180deg,rgba(15,18,23,0.98),rgba(8,10,14,1))]">
       <CardHeader className="pb-2.5 pt-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-primary/15 bg-primary/10">
-            <Icon className="h-4 w-4 text-primary" />
+          <div className={`flex h-9 w-9 items-center justify-center rounded-[10px] border ${toneClasses}`}>
+            <Icon className="h-4 w-4" />
           </div>
           <div>
             <CardTitle className="font-display text-[0.95rem] uppercase tracking-[0.08em]">{title}</CardTitle>
@@ -502,7 +540,7 @@ function MetricPanel({
   label: string;
   value: string;
   detail: string;
-  tone?: "default" | "muted" | "success" | "warning";
+  tone?: "default" | "muted" | "success" | "warning" | "info";
 }) {
   return (
     <div className="rounded-[12px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.012))] p-3.5">
@@ -878,7 +916,7 @@ export function SimulatorWorkspace() {
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge>Grand Prix</Badge>
                   <StatusChip label="Preset" value={activePreset} variant={activePreset === "Custom" ? "muted" : "default"} />
-                  <StatusChip label="Weather" value={activeWeather.label} variant="muted" />
+                  <StatusChip label="Weather" value={activeWeather.label} variant="info" />
                   {activeTrack.sprint_weekend ? <StatusChip label="Weekend" value="Sprint" variant="warning" /> : null}
                   <StatusChip label="Volatility" value={volatilityLabel(currentVolatility)} variant={signalVariant(currentVolatility)} />
                   <StatusChip
@@ -897,8 +935,8 @@ export function SimulatorWorkspace() {
                   <span>{form.complexity_level} detail</span>
                 </div>
                 <div className="mt-2.5 flex flex-wrap gap-2">
-                  <StatusChip label="Deg" value={activeTrack.degradation_profile} variant="muted" />
-                  <StatusChip label="Track pos" value={`${Math.round(activeTrack.track_position_importance * 100)}`} variant="muted" />
+                  <StatusChip label="Deg" value={activeTrack.degradation_profile} variant={telemetryVariant(activeTrack.tire_stress)} />
+                  <StatusChip label="Track pos" value={`${Math.round(activeTrack.track_position_importance * 100)}`} variant="info" />
                   <StatusChip label="Energy" value={`${Math.round(activeTrack.energy_sensitivity * 100)}`} variant="default" />
                   <StatusChip label="SC / VSC" value={`${Math.round((activeTrack.safety_car_risk + form.environment.full_safety_cars) * 50)}`} variant="warning" />
                 </div>
@@ -921,10 +959,10 @@ export function SimulatorWorkspace() {
                   </Button>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 rounded-[10px] border border-white/8 bg-white/[0.03] px-3 py-2.5">
-                  <StatusChip label="Weekend" value={activeWeather.label} variant={signalVariant(currentVolatility)} />
-                  <StatusChip label="Chaos" value={`${Math.round(form.environment.randomness_intensity * 100)}`} variant="muted" />
-                  <StatusChip label="Quali" value={`${Math.round(form.weights.qualifying_importance * 100)}`} variant="muted" />
-                  <StatusChip label="Track pos" value={`${Math.round(activeTrack.track_position_importance * 100)}`} variant="muted" />
+                  <StatusChip label="Weekend" value={activeWeather.label} variant="info" />
+                  <StatusChip label="Chaos" value={`${Math.round(form.environment.randomness_intensity * 100)}`} variant={signalVariant(form.environment.randomness_intensity)} />
+                  <StatusChip label="Quali" value={`${Math.round(form.weights.qualifying_importance * 100)}`} variant="info" />
+                  <StatusChip label="Track pos" value={`${Math.round(activeTrack.track_position_importance * 100)}`} variant="info" />
                 </div>
                 {error ? <div className="rounded-[10px] border border-rose-300/20 bg-rose-400/10 px-3 py-2 text-[12px] leading-5 text-rose-100">{error}</div> : null}
               </div>
@@ -959,7 +997,7 @@ export function SimulatorWorkspace() {
               </div>
               <div className="rounded-[10px] border border-white/8 bg-black/25 p-3">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="text-[10px] uppercase tracking-[0.24em] text-primary/90">Timing strip</div>
+                  <div className="text-[10px] uppercase tracking-[0.24em] text-cyan-200">Timing strip</div>
                   <Badge variant={leadDriver ? badgeVariantForConfidence(leadDriver.confidence_label) : signalVariant(currentVolatility)}>
                     {leadDriver?.confidence_label ?? "Preview"}
                   </Badge>
@@ -1000,11 +1038,11 @@ export function SimulatorWorkspace() {
                         setForm(next);
                         void requestSuggestions(next, { suppressError: true });
                       }}
-                      className="rounded-[10px] border border-white/8 bg-white/[0.03] px-3 py-2.5 text-left transition duration-200 hover:border-primary/30 hover:bg-white/[0.05] active:scale-[0.99]"
+                      className="rounded-[10px] border border-white/8 bg-white/[0.03] px-3 py-2.5 text-left transition duration-200 hover:border-cyan-300/30 hover:bg-white/[0.05] active:scale-[0.99]"
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div className="text-sm text-white">{preset.label}</div>
-                        <Badge variant="muted">{preset.simulation_runs}</Badge>
+                        <Badge variant="info">{preset.simulation_runs}</Badge>
                       </div>
                       <div className="mt-1 line-clamp-1 font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">{preset.description}</div>
                     </button>
@@ -1024,16 +1062,16 @@ export function SimulatorWorkspace() {
                     options={defaults.weather_presets.map((item) => ({ value: item.id, label: item.label }))}
                   />
                 </div>
-                <div className="rounded-[10px] border border-primary/15 bg-primary/8 p-3">
+                <div className="rounded-[10px] border border-cyan-300/15 bg-cyan-300/8 p-3">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <div className="text-[10px] uppercase tracking-[0.24em] text-primary/90">Circuit card</div>
+                      <div className="text-[10px] uppercase tracking-[0.24em] text-cyan-200">Circuit card</div>
                       <div className="mt-1.5 text-sm text-white">{activeTrack.circuit_name}</div>
                       <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">{activeTrack.summary}</div>
                     </div>
                     <div className="flex flex-col items-end gap-2">
                       {activeTrack.sprint_weekend ? <Badge variant="warning">Sprint</Badge> : null}
-                      <Badge variant="muted">{activeTrack.country}</Badge>
+                      <Badge variant="info">{activeTrack.country}</Badge>
                     </div>
                   </div>
                   {activeTrack.homologation_note ? (
@@ -1293,8 +1331,8 @@ export function SimulatorWorkspace() {
               {!deferredSimulation ? (
                 <div className="space-y-2.5">
                   <div className="flex items-center gap-3 rounded-[10px] border border-dashed border-white/10 bg-black/20 px-3 py-2.5">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-[9px] border border-primary/20 bg-primary/10">
-                      <Radar className="h-5 w-5 text-primary" />
+                    <div className="flex h-9 w-9 items-center justify-center rounded-[9px] border border-cyan-300/20 bg-cyan-300/10">
+                      <Radar className="h-5 w-5 text-cyan-200" />
                     </div>
                     <div className="min-w-0">
                       <div className="font-display text-[1rem] uppercase tracking-[0.06em] text-white">Awaiting first run</div>
@@ -1302,9 +1340,9 @@ export function SimulatorWorkspace() {
                     </div>
                   </div>
                   <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
-                    <MetricPanel label="Weekend state" value={activeWeather.label} detail="Current weather mode" tone="muted" />
+                    <MetricPanel label="Weekend state" value={activeWeather.label} detail="Current weather mode" tone="info" />
                     <MetricPanel label="Circuit pressure" value={volatilityLabel(currentVolatility)} detail="SC risk + weather swing + noise" tone={signalVariant(currentVolatility)} />
-                    <MetricPanel label="Qualifying value" value={`${Math.round(activeTrack.qualifying_importance * 100)}/100`} detail="Grid leverage" tone="muted" />
+                    <MetricPanel label="Qualifying value" value={`${Math.round(activeTrack.qualifying_importance * 100)}/100`} detail="Grid leverage" tone="info" />
                     <MetricPanel label="Energy demand" value={`${Math.round(activeTrack.energy_sensitivity * 100)}/100`} detail="Deployment payoff" tone="default" />
                   </div>
                 </div>
@@ -1337,7 +1375,7 @@ export function SimulatorWorkspace() {
                     />
                   </div>
                   <div className="rounded-[12px] border border-white/8 bg-black/25 p-3.5">
-                    <div className="text-[10px] uppercase tracking-[0.24em] text-primary/90">Scenario line</div>
+                    <div className="text-[10px] uppercase tracking-[0.24em] text-cyan-200">Scenario line</div>
                     <div className="mt-2.5 text-sm leading-6 text-white">{deferredSimulation.scenario.headline}</div>
                     <div className="mt-3 grid gap-2.5">
                       <div className="rounded-[10px] border border-white/8 bg-white/[0.03] p-2.5">
@@ -1365,7 +1403,7 @@ export function SimulatorWorkspace() {
                         <div className="rounded-[18px] border border-white/8 bg-black/20 p-4">
                           <div className="mb-3 flex items-center justify-between gap-3">
                             <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Projected order</div>
-                            <Badge variant="muted">Top 8</Badge>
+                            <Badge variant="info">Top 8</Badge>
                           </div>
                           <div className="h-[330px]">
                             <ResponsiveContainer width="100%" height="100%">
@@ -1379,7 +1417,7 @@ export function SimulatorWorkspace() {
                                 />
                                 <Bar dataKey="expected" radius={[0, 8, 8, 0]}>
                                   {positionData.map((entry, index) => (
-                                    <Cell key={entry.name} fill={index === 0 ? "#ff415f" : index <= 2 ? "#f7bb43" : "#8e9cab"} />
+                                    <Cell key={entry.name} fill={index === 0 ? "#ff415f" : index <= 2 ? "#31c48d" : "#67e8f9"} />
                                   ))}
                                 </Bar>
                               </BarChart>
@@ -1389,7 +1427,7 @@ export function SimulatorWorkspace() {
                         <div className="rounded-[18px] border border-white/8 bg-black/20 p-4">
                           <div className="mb-3 flex items-center justify-between gap-3">
                             <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Top-six distribution</div>
-                            <Badge variant="muted">P1-P6</Badge>
+                            <Badge variant="info">P1-P6</Badge>
                           </div>
                           <div className="h-[330px]">
                             <ResponsiveContainer width="100%" height="100%">
@@ -1499,15 +1537,15 @@ export function SimulatorWorkspace() {
                                   <Cell
                                     key={entry.label}
                                     fill={
-                                      entry.label === "Safety"
-                                        ? "#f7bb43"
-                                        : entry.label === "Red"
-                                          ? "#ff875f"
-                                          : entry.label === "VSC"
-                                            ? "#31c48d"
-                                            : entry.label === "Weather"
-                                              ? "#ff415f"
-                                              : "#8895a7"
+                                      entry.label === "Red"
+                                        ? "#ff415f"
+                                        : entry.label === "Weather"
+                                          ? "#f7bb43"
+                                          : entry.label === "Safety"
+                                            ? "#f7bb43"
+                                            : entry.label === "VSC"
+                                              ? "#67e8f9"
+                                              : "#94a3b8"
                                     }
                                   />
                                 ))}
@@ -1545,8 +1583,8 @@ export function SimulatorWorkspace() {
           ) : (
             <SectionFrame eyebrow="No active run" title="Projection board">
               <div className="rounded-[12px] border border-dashed border-white/10 bg-black/20 p-5 text-center">
-                <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-[10px] border border-primary/20 bg-primary/10">
-                  <AlertTriangle className="h-5 w-5 text-primary" />
+                <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-[10px] border border-amber-300/20 bg-amber-300/10">
+                  <AlertTriangle className="h-5 w-5 text-amber-200" />
                 </div>
                 <div className="mt-3 text-base uppercase tracking-[0.08em] text-white">No active projection</div>
                 <div className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Run once to populate the board.</div>
@@ -1560,13 +1598,14 @@ export function SimulatorWorkspace() {
             title="Circuit sensitivity"
             subtitle="Track-led levers."
             icon={Thermometer}
+            tone="info"
           >
             <div className="grid gap-2">
-              <SignalMeter label="Qualifying" value={activeTrack.qualifying_importance} />
-              <SignalMeter label="Track position" value={activeTrack.track_position_importance} />
-              <SignalMeter label="Energy demand" value={activeTrack.energy_sensitivity} />
-              <SignalMeter label="Weather swing" value={activeTrack.weather_volatility} />
-              <SignalMeter label="SC risk" value={activeTrack.safety_car_risk} />
+              <SignalMeter label="Qualifying" value={activeTrack.qualifying_importance} tone="info" />
+              <SignalMeter label="Track position" value={activeTrack.track_position_importance} tone="info" />
+              <SignalMeter label="Energy demand" value={activeTrack.energy_sensitivity} tone={telemetryVariant(activeTrack.energy_sensitivity)} />
+              <SignalMeter label="Weather swing" value={activeTrack.weather_volatility} tone="warning" />
+              <SignalMeter label="SC risk" value={activeTrack.safety_car_risk} tone="warning" />
             </div>
           </InsightCard>
 
@@ -1574,12 +1613,13 @@ export function SimulatorWorkspace() {
             title="Scenario pressure"
             subtitle="Current control state."
             icon={ShieldAlert}
+            tone="warning"
           >
             <div className="grid gap-2">
-              <SignalMeter label="Weather" value={form.environment.rain_onset} secondary={sliderLabel(form.environment.rain_onset)} />
-              <SignalMeter label="Race control" value={(form.environment.full_safety_cars + form.environment.virtual_safety_cars) / 2} secondary="SC / VSC" />
-              <SignalMeter label="Attrition" value={(form.environment.dnfs + form.environment.crashes) / 2} secondary="DNF + incident" />
-              <SignalMeter label="Randomness" value={form.environment.randomness_intensity} secondary={volatilityLabel(form.environment.randomness_intensity)} />
+              <SignalMeter label="Weather" value={form.environment.rain_onset} secondary={sliderLabel(form.environment.rain_onset)} tone="warning" />
+              <SignalMeter label="Race control" value={(form.environment.full_safety_cars + form.environment.virtual_safety_cars) / 2} secondary="SC / VSC" tone="warning" />
+              <SignalMeter label="Attrition" value={(form.environment.dnfs + form.environment.crashes) / 2} secondary="DNF + incident" tone="default" />
+              <SignalMeter label="Randomness" value={form.environment.randomness_intensity} secondary={volatilityLabel(form.environment.randomness_intensity)} tone={signalVariant(form.environment.randomness_intensity)} />
             </div>
           </InsightCard>
 
@@ -1587,13 +1627,14 @@ export function SimulatorWorkspace() {
             title="Lead diagnostics"
             subtitle="Why the lead car is on top."
             icon={Zap}
+            tone="default"
           >
             {leaderDiagnostics ? (
               <div className="grid gap-2">
-                <SignalMeter label="Pace edge" value={Math.min(1, Math.max(0, (leaderDiagnostics.pace_edge + 1.6) / 3.2))} secondary={compactNumber(leaderDiagnostics.pace_edge)} />
-                <SignalMeter label="Track fit" value={Math.min(1, Math.max(0, leaderDiagnostics.track_fit_score / 20))} secondary={compactNumber(leaderDiagnostics.track_fit_score)} />
-                <SignalMeter label="Strategy comp" value={Math.min(1, Math.max(0, (leaderDiagnostics.strategy_component + 6) / 12))} secondary={compactNumber(leaderDiagnostics.strategy_component)} />
-                <SignalMeter label="Chaos resilience" value={Math.min(1, Math.max(0, leaderDiagnostics.chaos_resilience))} secondary={compactNumber(leaderDiagnostics.chaos_resilience)} />
+                <SignalMeter label="Pace edge" value={Math.min(1, Math.max(0, (leaderDiagnostics.pace_edge + 1.6) / 3.2))} secondary={compactNumber(leaderDiagnostics.pace_edge)} tone="default" />
+                <SignalMeter label="Track fit" value={Math.min(1, Math.max(0, leaderDiagnostics.track_fit_score / 20))} secondary={compactNumber(leaderDiagnostics.track_fit_score)} tone="info" />
+                <SignalMeter label="Strategy comp" value={Math.min(1, Math.max(0, (leaderDiagnostics.strategy_component + 6) / 12))} secondary={compactNumber(leaderDiagnostics.strategy_component)} tone="success" />
+                <SignalMeter label="Chaos resilience" value={Math.min(1, Math.max(0, leaderDiagnostics.chaos_resilience))} secondary={compactNumber(leaderDiagnostics.chaos_resilience)} tone="success" />
               </div>
             ) : (
               <div className="rounded-[12px] border border-white/8 bg-white/[0.03] p-4 font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
@@ -1606,11 +1647,12 @@ export function SimulatorWorkspace() {
             title="Track profile"
             subtitle="Weekend metadata."
             icon={Flag}
+            tone="info"
           >
             <div className="rounded-[10px] border border-white/8 bg-white/[0.03] p-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="text-sm text-white">{activeTrack.name}</div>
-                {activeTrack.sprint_weekend ? <Badge variant="warning">Sprint</Badge> : <Badge variant="muted">Standard</Badge>}
+                {activeTrack.sprint_weekend ? <Badge variant="warning">Sprint</Badge> : <Badge variant="info">Standard</Badge>}
               </div>
               <div className="mt-1.5 line-clamp-2 text-[11px] leading-5 text-muted-foreground">{activeTrack.summary}</div>
             </div>
@@ -1638,6 +1680,7 @@ export function SimulatorWorkspace() {
             title="Top notes"
             subtitle="Front group scan."
             icon={Trophy}
+            tone="success"
           >
             {topDrivers.length ? (
               <div className="space-y-1.5">
