@@ -381,6 +381,8 @@ class DriverRunSummary:
     dnf_lap: int | None
     pit_stops: int
     pit_laps: list[int]
+    stint_path: list[str]
+    stint_lengths: list[int]
     average_stint_length: float
     average_first_pit_lap: float | None
     overtakes: int
@@ -415,3 +417,10 @@ class RaceRunResult:
     total_pit_stops: int
     safety_car_laps: list[int]
     turning_points: list[str]
+    weather_shift_lap: int | None = None
+    drying_lap: int | None = None
+    pit_discount: float = 1.0
+    neutralization_windows: list[tuple[str, int, int]] = field(default_factory=list)
+    lap_pit_stops: list[int] = field(default_factory=list)
+    lap_overtakes: list[int] = field(default_factory=list)
+    lap_volatility: list[float] = field(default_factory=list)

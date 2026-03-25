@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 import random
 from collections import Counter, defaultdict
+from statistics import mean
 
 from racesim.api.contracts import (
     DriverResult,
@@ -79,10 +80,14 @@ class SimulationService:
         event_pressure_totals: Counter[str] = Counter()
         diagnostic_totals: dict[str, Counter[str]] = defaultdict(Counter)
         pit_stop_totals: Counter[str] = Counter()
+        pit_stop_distribution: Counter[int] = Counter()
         first_pit_lap_totals: Counter[str] = Counter()
         first_pit_lap_counts: Counter[str] = Counter()
+        first_pit_lap_samples: dict[str, list[float]] = defaultdict(list)
         overtake_totals: Counter[str] = Counter()
         stint_length_totals: Counter[str] = Counter()
+        stint_path_counts: dict[str, Counter[tuple[str, ...]]] = defaultdict(Counter)
+        stint_length_samples: dict[str, dict[tuple[str, ...], list[list[int]]]] = defaultdict(lambda: defaultdict(list))
         net_position_totals: Counter[str] = Counter()
         position_change_totals: Counter[str] = Counter()
         strategy_adaptation_totals: Counter[str] = Counter()
@@ -96,6 +101,15 @@ class SimulationService:
         turning_point_counts: Counter[str] = Counter()
         safety_car_lap_total = 0
         safety_car_lap_count = 0
+        lap_pit_totals = [0 for _ in range(track.laps)]
+        lap_overtake_totals = [0 for _ in range(track.laps)]
+        lap_volatility_totals = [0.0 for _ in range(track.laps)]
+        disruption_start_samples: list[int] = []
+        disruption_end_samples: list[int] = []
+        disruption_lap_samples: list[float] = []
+        weather_shift_lap_samples: list[int] = []
+        drying_lap_samples: list[int] = []
+        neutralized_pit_gain_samples: list[float] = []
 
         for run_index in range(request.simulation_runs):
             rng = random.Random(self._scenario_seed(request, track, weather) + run_index * 37)
@@ -106,6 +120,19 @@ class SimulationService:
             if run.safety_car_laps:
                 safety_car_lap_total += sum(run.safety_car_laps) / len(run.safety_car_laps)
                 safety_car_lap_count += 1
+            if run.neutralization_windows:
+                disruption_start_samples.append(min(start for _, start, _ in run.neutralization_windows))
+                disruption_end_samples.append(max(end for _, _, end in run.neutralization_windows))
+                disruption_lap_samples.extend((start + end) / 2 for _, start, end in run.neutralization_windows)
+                neutralized_pit_gain_samples.append(track.pit_loss_seconds * max(0.0, 1.0 - run.pit_discount))
+            if run.weather_shift_lap is not None:
+                weather_shift_lap_samples.append(run.weather_shift_lap)
+            if run.drying_lap is not None:
+                drying_lap_samples.append(run.drying_lap)
+            for lap_index in range(track.laps):
+                lap_pit_totals[lap_index] += run.lap_pit_stops[lap_index]
+                lap_overtake_totals[lap_index] += run.lap_overtakes[lap_index]
+                lap_volatility_totals[lap_index] += run.lap_volatility[lap_index]
 
             for position, driver_id in enumerate(run.finish_order, start=1):
                 summary = run.driver_summaries[driver_id]
@@ -119,6 +146,7 @@ class SimulationService:
                 incident_time_totals[driver_id] += summary.incident_time_loss
                 event_pressure_totals[driver_id] += run.event_pressure
                 pit_stop_totals[driver_id] += summary.pit_stops
+                pit_stop_distribution[summary.pit_stops] += 1
                 overtake_totals[driver_id] += summary.overtakes
                 stint_length_totals[driver_id] += summary.average_stint_length
                 net_position_totals[driver_id] += summary.positions_gained
@@ -126,6 +154,10 @@ class SimulationService:
                 if summary.average_first_pit_lap is not None:
                     first_pit_lap_totals[driver_id] += summary.average_first_pit_lap
                     first_pit_lap_counts[driver_id] += 1
+                    first_pit_lap_samples[driver_id].append(summary.average_first_pit_lap)
+                path_signature = tuple(summary.stint_path)
+                stint_path_counts[driver_id][path_signature] += 1
+                stint_length_samples[driver_id][path_signature].append(summary.stint_lengths)
                 strategy_adaptation_totals[driver_id] += summary.strategy_adaptations
                 undercut_attempt_totals[driver_id] += summary.undercut_attempts
                 undercut_success_totals[driver_id] += summary.undercut_successes
@@ -149,9 +181,13 @@ class SimulationService:
             pit_stop_totals=pit_stop_totals,
             first_pit_lap_totals=first_pit_lap_totals,
             first_pit_lap_counts=first_pit_lap_counts,
+            first_pit_lap_samples=first_pit_lap_samples,
             overtake_totals=overtake_totals,
             stint_length_totals=stint_length_totals,
+            stint_path_counts=stint_path_counts,
+            stint_length_samples=stint_length_samples,
             net_position_totals=net_position_totals,
+            position_change_totals=position_change_totals,
             undercut_attempt_totals=undercut_attempt_totals,
             undercut_success_totals=undercut_success_totals,
             overcut_attempt_totals=overcut_attempt_totals,
@@ -187,6 +223,16 @@ class SimulationService:
             post_pit_traffic_penalty_totals=post_pit_traffic_penalty_totals,
             pit_timing_regret_totals=pit_timing_regret_totals,
             position_change_totals=position_change_totals,
+            pit_stop_distribution=pit_stop_distribution,
+            lap_pit_totals=lap_pit_totals,
+            lap_overtake_totals=lap_overtake_totals,
+            lap_volatility_totals=lap_volatility_totals,
+            disruption_start_samples=disruption_start_samples,
+            disruption_end_samples=disruption_end_samples,
+            disruption_lap_samples=disruption_lap_samples,
+            weather_shift_lap_samples=weather_shift_lap_samples,
+            drying_lap_samples=drying_lap_samples,
+            neutralized_pit_gain_samples=neutralized_pit_gain_samples,
         )
         scenario = ScenarioSummary(
             grand_prix_id=track.id,
@@ -309,6 +355,46 @@ class SimulationService:
         tallies["late_incident"] += int(run.late_incident)
         tallies["event_pressure_total"] += run.event_pressure
 
+    def _percentile_int(self, values: list[float | int], percentile: float) -> int | None:
+        if not values:
+            return None
+        ordered = sorted(values)
+        index = min(len(ordered) - 1, max(0, int(round((len(ordered) - 1) * percentile))))
+        return int(round(float(ordered[index])))
+
+    def _window_bounds(self, values: list[float | int], low: float = 0.2, high: float = 0.8) -> tuple[int | None, int | None]:
+        if not values:
+            return None, None
+        return self._percentile_int(values, low), self._percentile_int(values, high)
+
+    def _mean_stint_lengths(self, samples: list[list[int]]) -> list[float]:
+        if not samples:
+            return []
+        width = max(len(sample) for sample in samples)
+        means: list[float] = []
+        for index in range(width):
+            lane = [sample[index] for sample in samples if index < len(sample)]
+            means.append(round(sum(lane) / len(lane), 1))
+        return means
+
+    def _stint_profile(
+        self,
+        driver_id: str,
+        stint_path_counts: dict[str, Counter[tuple[str, ...]]],
+        stint_length_samples: dict[str, dict[tuple[str, ...], list[list[int]]]],
+    ) -> tuple[list[str], list[float], list[str], list[float]]:
+        ranked_paths = stint_path_counts.get(driver_id, Counter()).most_common(2)
+        if not ranked_paths:
+            return [], [], [], []
+        primary_path = list(ranked_paths[0][0])
+        primary_lengths = self._mean_stint_lengths(stint_length_samples[driver_id][ranked_paths[0][0]])
+        alternate_path: list[str] = []
+        alternate_lengths: list[float] = []
+        if len(ranked_paths) > 1:
+            alternate_path = list(ranked_paths[1][0])
+            alternate_lengths = self._mean_stint_lengths(stint_length_samples[driver_id][ranked_paths[1][0]])
+        return primary_path, primary_lengths, alternate_path, alternate_lengths
+
     def _build_driver_results(
         self,
         profiles: dict[str, DriverStaticProfile],
@@ -319,9 +405,13 @@ class SimulationService:
         pit_stop_totals: Counter[str],
         first_pit_lap_totals: Counter[str],
         first_pit_lap_counts: Counter[str],
+        first_pit_lap_samples: dict[str, list[float]],
         overtake_totals: Counter[str],
         stint_length_totals: Counter[str],
+        stint_path_counts: dict[str, Counter[tuple[str, ...]]],
+        stint_length_samples: dict[str, dict[tuple[str, ...], list[list[int]]]],
         net_position_totals: Counter[str],
+        position_change_totals: Counter[str],
         undercut_attempt_totals: Counter[str],
         undercut_success_totals: Counter[str],
         overcut_attempt_totals: Counter[str],
@@ -378,6 +468,7 @@ class SimulationService:
                 if first_pit_lap_counts[driver_id]
                 else 0.0,
                 "average_overtakes": round(overtake_totals[driver_id] / request.simulation_runs, 4),
+                "average_position_changes": round(position_change_totals[driver_id] / request.simulation_runs, 4),
                 "net_position_delta": round(net_position_totals[driver_id] / request.simulation_runs, 4),
                 "undercut_success_rate": round(
                     undercut_success_totals.get(driver_id, 0) / max(1, undercut_attempt_totals.get(driver_id, 0)),
@@ -397,8 +488,15 @@ class SimulationService:
             )
             average_overtakes = round(overtake_totals[driver_id] / request.simulation_runs, 2)
             average_stint_length = round(stint_length_totals[driver_id] / request.simulation_runs, 2)
+            average_position_changes = round(position_change_totals[driver_id] / request.simulation_runs, 2)
             net_position_delta = round(net_position_totals[driver_id] / request.simulation_runs, 2)
             expected_grid_position = round(sum(grids) / len(grids), 2)
+            first_pit_window_start, first_pit_window_end = self._window_bounds(first_pit_lap_samples.get(driver_id, []))
+            primary_stint_path, primary_stint_lengths, alternate_stint_path, alternate_stint_lengths = self._stint_profile(
+                driver_id,
+                stint_path_counts,
+                stint_length_samples,
+            )
 
             driver_results.append(
                 DriverResult(
@@ -427,7 +525,14 @@ class SimulationService:
                     average_first_pit_lap=average_first_pit_lap,
                     average_overtakes=average_overtakes,
                     average_stint_length=average_stint_length,
+                    average_position_changes=average_position_changes,
                     net_position_delta=net_position_delta,
+                    primary_stint_path=primary_stint_path,
+                    primary_stint_lengths=primary_stint_lengths,
+                    alternate_stint_path=alternate_stint_path,
+                    alternate_stint_lengths=alternate_stint_lengths,
+                    first_pit_window_start=first_pit_window_start,
+                    first_pit_window_end=first_pit_window_end,
                     explanation=self._explain_driver(
                         profile=profile,
                         suggestion=suggestions[driver_id],
@@ -529,6 +634,16 @@ class SimulationService:
         post_pit_traffic_penalty_totals: Counter[str],
         pit_timing_regret_totals: Counter[str],
         position_change_totals: Counter[str],
+        pit_stop_distribution: Counter[int],
+        lap_pit_totals: list[int],
+        lap_overtake_totals: list[int],
+        lap_volatility_totals: list[float],
+        disruption_start_samples: list[int],
+        disruption_end_samples: list[int],
+        disruption_lap_samples: list[float],
+        weather_shift_lap_samples: list[int],
+        drying_lap_samples: list[int],
+        neutralized_pit_gain_samples: list[float],
     ) -> EventSummary:
         leverage = build_circuit_leverage(track)
         runs = request.simulation_runs
@@ -555,6 +670,7 @@ class SimulationService:
         avg_green_flag_overtakes = round(tallies["green_overtakes_total"] / runs, 2)
         turning_points = [item for item, _ in turning_point_counts.most_common(4)]
         driver_count = max(1, len(load_drivers()))
+        lead_group = driver_results[:8]
         avg_first_stop_lap = (
             round(sum(first_pit_lap_totals.values()) / max(1, sum(first_pit_lap_counts.values())), 2)
             if sum(first_pit_lap_counts.values())
@@ -598,6 +714,150 @@ class SimulationService:
             4,
         )
         strategy_sensitivity_index = abs(strategy_sensitivity_index)
+        first_stop_window_start, first_stop_window_end = self._window_bounds(
+            [
+                driver.first_pit_window_start
+                for driver in lead_group
+                if driver.first_pit_window_start is not None
+            ]
+            + [
+                driver.first_pit_window_end
+                for driver in lead_group
+                if driver.first_pit_window_end is not None
+            ]
+        )
+        if first_stop_window_start is None or first_stop_window_end is None:
+            fallback_center = avg_first_stop_lap if avg_first_stop_lap is not None else track.laps * 0.32
+            first_stop_window_start = max(2, int(round(fallback_center - 2)))
+            first_stop_window_end = min(track.laps - 1, int(round(fallback_center + 2)))
+
+        race_fluidity_score = round(
+            min(
+                1.0,
+                avg_green_flag_overtakes / 18.0
+                + avg_position_changes_per_driver / 16.0
+                + max(0.0, leverage.recovery_factor - 1.0) * 0.18
+                + max(0.0, leverage.deployment_sensitivity_factor - 1.0) * 0.06
+                - max(0.0, leverage.order_lock_factor - 1.2) * 0.15,
+            ),
+            4,
+        )
+        if race_fluidity_score < 0.24:
+            overtaking_intensity = "Sticky"
+        elif race_fluidity_score < 0.42:
+            overtaking_intensity = "Measured"
+        elif race_fluidity_score < 0.62:
+            overtaking_intensity = "Active"
+        else:
+            overtaking_intensity = "High Flow"
+
+        disruption_window_start, disruption_window_end = self._window_bounds(disruption_start_samples)
+        if disruption_end_samples:
+            disruption_window_end = self._percentile_int(disruption_end_samples, 0.75)
+        average_disruption_lap = round(mean(disruption_lap_samples), 2) if disruption_lap_samples else None
+        weather_crossover_window_start, weather_crossover_window_end = self._window_bounds(weather_shift_lap_samples)
+        average_weather_shift_lap = round(mean(weather_shift_lap_samples), 2) if weather_shift_lap_samples else None
+        if drying_lap_samples:
+            weather_crossover_window_end = self._percentile_int(drying_lap_samples, 0.75)
+        elif weather_crossover_window_start is not None:
+            weather_crossover_window_end = min(track.laps, weather_crossover_window_start + max(3, int(track.laps * 0.08)))
+
+        average_neutralized_pit_gain = round(mean(neutralized_pit_gain_samples), 2) if neutralized_pit_gain_samples else 0.0
+        safety_car_leverage_score = round(
+            min(
+                1.0,
+                rates["Safety car"] * 0.34
+                + track.safety_car_risk * 0.26
+                + max(0.0, leverage.disruption_leverage_factor - 1.0) * 0.16
+                + min(1.0, average_neutralized_pit_gain / max(1.0, track.pit_loss_seconds)) * 0.24,
+            ),
+            4,
+        )
+
+        leverage_phase = (
+            f"L{disruption_window_start}-{disruption_window_end}"
+            if disruption_window_start is not None and disruption_window_end is not None
+            else f"L{first_stop_window_start}-{first_stop_window_end}"
+        )
+
+        opening_end = max(4, min(track.laps - 12, first_stop_window_start - 1))
+        stop_phase_end = max(opening_end + 3, min(track.laps - 6, first_stop_window_end + 1))
+        transition_end = max(stop_phase_end + 3, min(track.laps - 3, int(track.laps * 0.78)))
+        phase_specs = [
+            ("opening", "Launch", 1, opening_end),
+            ("first-stop", "Stop cycle", opening_end + 1, stop_phase_end),
+            ("transition", "Middle phase", stop_phase_end + 1, transition_end),
+            ("closing", "Final push", transition_end + 1, track.laps),
+        ]
+        race_phases = []
+        for phase_id, label, start_lap, end_lap in phase_specs:
+            start_index = max(0, start_lap - 1)
+            end_index = min(track.laps, end_lap)
+            band_volatility = round(mean(value / runs for value in lap_volatility_totals[start_index:end_index]), 4)
+            pit_pressure = round(sum(lap_pit_totals[start_index:end_index]) / (runs * driver_count), 4)
+            overtake_load = round(sum(lap_overtake_totals[start_index:end_index]) / runs, 2)
+            if phase_id == "opening":
+                summary = (
+                    "track order settles early and launch losses are hard to recover"
+                    if leverage.order_lock_factor > 1.7
+                    else "the start phase still leaves room for early movement"
+                )
+            elif phase_id == "first-stop":
+                summary = (
+                    f"pit timing bites hardest here as stops cluster around L{first_stop_window_start}-{first_stop_window_end}"
+                )
+            elif phase_id == "transition":
+                summary = (
+                    "crossover and offset strategies carry the biggest clean-air payoff"
+                    if weather_crossover_window_start is not None
+                    else "mid-race order depends on traffic release and offset stints"
+                )
+            else:
+                summary = (
+                    "late interruptions can reopen the order and restart pressure remains live"
+                    if rates["Late incident"] > 0.14 or rates["Safety car"] > 0.14
+                    else "final-stint pressure rises as tire age and track position converge"
+                )
+            race_phases.append(
+                {
+                    "phase_id": phase_id,
+                    "label": label,
+                    "start_lap": start_lap,
+                    "end_lap": end_lap,
+                    "volatility": band_volatility,
+                    "pit_pressure": pit_pressure,
+                    "overtake_load": overtake_load,
+                    "summary": summary,
+                }
+            )
+
+        stop_count_distribution = [
+            {
+                "stops": stops,
+                "share": round(count / (runs * driver_count), 4),
+            }
+            for stops, count in sorted(pit_stop_distribution.items())
+            if count > 0
+        ]
+
+        evolution_summary = [
+            (
+                "track position stays critical off the line"
+                if leverage.order_lock_factor > 1.7
+                else "opening laps still allow measured early movement"
+            ),
+            f"first-stop pressure opens around laps {first_stop_window_start}-{first_stop_window_end}",
+            (
+                f"SC leverage peaks around {leverage_phase}"
+                if disruption_window_start is not None and disruption_window_end is not None
+                else "clean-air value rises through the main stop cycle"
+            ),
+            (
+                f"weather crossover pressure builds around laps {weather_crossover_window_start}-{weather_crossover_window_end}"
+                if weather_crossover_window_start is not None and weather_crossover_window_end is not None
+                else "late-race volatility stays elevated if interruptions remain live"
+            ),
+        ]
 
         impact_summary = []
         if rates["Weather shift"] > 0.24 or tallies["wet_start"] / runs > 0.12:
@@ -643,6 +903,8 @@ class SimulationService:
                 "avg_position_changes_per_driver": avg_position_changes_per_driver,
                 "avg_first_stop_lap": avg_first_stop_lap,
                 "avg_stop_count": avg_pit_stops_per_driver,
+                "first_stop_window_start": first_stop_window_start,
+                "first_stop_window_end": first_stop_window_end,
                 "undercut_success_tendency": undercut_success_tendency,
                 "overcut_success_tendency": overcut_success_tendency,
                 "traffic_penalty_impact": traffic_penalty_impact,
@@ -651,7 +913,28 @@ class SimulationService:
                 "pit_timing_regret": pit_timing_regret,
                 "strategy_success_rate": strategy_success_rate,
                 "strategy_sensitivity_index": strategy_sensitivity_index,
+                "stop_count_distribution": stop_count_distribution,
             },
+            movement_summary={
+                "avg_overtakes_per_simulation": avg_green_flag_overtakes,
+                "avg_position_changes_per_driver": avg_position_changes_per_driver,
+                "race_fluidity_score": race_fluidity_score,
+                "overtaking_intensity": overtaking_intensity,
+            },
+            event_timing={
+                "disruption_window_start": disruption_window_start,
+                "disruption_window_end": disruption_window_end,
+                "average_disruption_lap": average_disruption_lap,
+                "weather_crossover_window_start": weather_crossover_window_start,
+                "weather_crossover_window_end": weather_crossover_window_end,
+                "average_weather_shift_lap": average_weather_shift_lap,
+                "average_neutralized_pit_gain": average_neutralized_pit_gain,
+                "safety_car_leverage_score": safety_car_leverage_score,
+                "leverage_phase": leverage_phase,
+                "late_race_interruption_risk": round(rates["Late incident"], 4),
+            },
+            race_phases=race_phases,
+            evolution_summary=evolution_summary,
         )
 
     def _headline(self, track: TrackProfile, weather: WeatherPreset, request: SimulationRequest) -> str:

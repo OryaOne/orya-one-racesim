@@ -100,7 +100,14 @@ class DriverResult(BaseModel):
     average_first_pit_lap: float | None = None
     average_overtakes: float = 0.0
     average_stint_length: float = 0.0
+    average_position_changes: float = 0.0
     net_position_delta: float = 0.0
+    primary_stint_path: list[str] = Field(default_factory=list)
+    primary_stint_lengths: list[float] = Field(default_factory=list)
+    alternate_stint_path: list[str] = Field(default_factory=list)
+    alternate_stint_lengths: list[float] = Field(default_factory=list)
+    first_pit_window_start: int | None = None
+    first_pit_window_end: int | None = None
     explanation: list[str]
     position_distribution: list[PositionProbability]
     diagnostics: dict[str, float]
@@ -136,10 +143,17 @@ class CircuitDiagnostics(BaseModel):
     disruption_reshuffle_factor: float
 
 
+class StopCountDistribution(BaseModel):
+    stops: int
+    share: float
+
+
 class StrategyDiagnostics(BaseModel):
     avg_position_changes_per_driver: float
     avg_first_stop_lap: float | None = None
     avg_stop_count: float
+    first_stop_window_start: int | None = None
+    first_stop_window_end: int | None = None
     undercut_success_tendency: float
     overcut_success_tendency: float
     traffic_penalty_impact: float
@@ -148,6 +162,38 @@ class StrategyDiagnostics(BaseModel):
     pit_timing_regret: float
     strategy_success_rate: float
     strategy_sensitivity_index: float
+    stop_count_distribution: list[StopCountDistribution]
+
+
+class MovementSummary(BaseModel):
+    avg_overtakes_per_simulation: float
+    avg_position_changes_per_driver: float
+    race_fluidity_score: float
+    overtaking_intensity: Literal["Sticky", "Measured", "Active", "High Flow"]
+
+
+class EventTimingSummary(BaseModel):
+    disruption_window_start: int | None = None
+    disruption_window_end: int | None = None
+    average_disruption_lap: float | None = None
+    weather_crossover_window_start: int | None = None
+    weather_crossover_window_end: int | None = None
+    average_weather_shift_lap: float | None = None
+    average_neutralized_pit_gain: float = 0.0
+    safety_car_leverage_score: float = 0.0
+    leverage_phase: str
+    late_race_interruption_risk: float
+
+
+class RacePhaseSummary(BaseModel):
+    phase_id: Literal["opening", "first-stop", "transition", "closing"]
+    label: str
+    start_lap: int
+    end_lap: int
+    volatility: float
+    pit_pressure: float
+    overtake_load: float
+    summary: str
 
 
 class EventSummary(BaseModel):
@@ -167,6 +213,10 @@ class EventSummary(BaseModel):
     turning_points: list[str] = Field(default_factory=list)
     circuit_diagnostics: CircuitDiagnostics
     strategy_diagnostics: StrategyDiagnostics
+    movement_summary: MovementSummary
+    event_timing: EventTimingSummary
+    race_phases: list[RacePhaseSummary] = Field(default_factory=list)
+    evolution_summary: list[str] = Field(default_factory=list)
 
 
 class TeamSummary(BaseModel):

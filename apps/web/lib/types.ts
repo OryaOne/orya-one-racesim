@@ -170,10 +170,100 @@ export type DriverResult = {
   average_first_pit_lap?: number | null;
   average_overtakes: number;
   average_stint_length: number;
+  average_position_changes: number;
   net_position_delta: number;
+  primary_stint_path: string[];
+  primary_stint_lengths: number[];
+  alternate_stint_path: string[];
+  alternate_stint_lengths: number[];
+  first_pit_window_start?: number | null;
+  first_pit_window_end?: number | null;
   explanation: string[];
   position_distribution: PositionProbability[];
   diagnostics: Record<string, number>;
+};
+
+export type CircuitDiagnostics = {
+  circuit_type: string;
+  degradation_profile: string;
+  track_position_importance: number;
+  overtaking_difficulty: number;
+  qualifying_importance: number;
+  tire_stress: number;
+  safety_car_risk: number;
+  weather_volatility: number;
+  energy_sensitivity: number;
+  strategy_flexibility: number;
+  track_position_multiplier: number;
+  qualifying_carryover_factor: number;
+  dirty_air_factor: number;
+  overtake_suppression_factor: number;
+  degradation_factor: number;
+  pit_window_pressure_factor: number;
+  disruption_leverage_factor: number;
+  restart_factor: number;
+  weather_sensitivity_factor: number;
+  deployment_sensitivity_factor: number;
+  strategy_flex_factor: number;
+  recovery_factor: number;
+  clean_air_factor: number;
+  order_lock_factor: number;
+  undercut_factor: number;
+  alternate_strategy_factor: number;
+  disruption_reshuffle_factor: number;
+};
+
+export type StopCountDistribution = {
+  stops: number;
+  share: number;
+};
+
+export type StrategyDiagnostics = {
+  avg_position_changes_per_driver: number;
+  avg_first_stop_lap?: number | null;
+  avg_stop_count: number;
+  first_stop_window_start?: number | null;
+  first_stop_window_end?: number | null;
+  undercut_success_tendency: number;
+  overcut_success_tendency: number;
+  traffic_penalty_impact: number;
+  post_pit_traffic_penalty: number;
+  avg_post_pit_position_delta: number;
+  pit_timing_regret: number;
+  strategy_success_rate: number;
+  strategy_sensitivity_index: number;
+  stop_count_distribution: StopCountDistribution[];
+};
+
+export type MovementSummary = {
+  avg_overtakes_per_simulation: number;
+  avg_position_changes_per_driver: number;
+  race_fluidity_score: number;
+  overtaking_intensity: "Sticky" | "Measured" | "Active" | "High Flow";
+};
+
+export type EventTimingSummary = {
+  disruption_window_start?: number | null;
+  disruption_window_end?: number | null;
+  average_disruption_lap?: number | null;
+  weather_crossover_window_start?: number | null;
+  weather_crossover_window_end?: number | null;
+  average_weather_shift_lap?: number | null;
+  average_neutralized_pit_gain: number;
+  safety_car_leverage_score: number;
+  leverage_phase: string;
+  late_race_interruption_risk: number;
+};
+
+export type RacePhaseSummary = {
+  phase_id: "opening" | "first-stop" | "transition" | "closing";
+  label: string;
+  start_lap: number;
+  end_lap: number;
+  volatility: number;
+  pit_pressure: number;
+  overtake_load: number;
+  summary: string;
 };
 
 export type TeamSummary = {
@@ -200,6 +290,12 @@ export type EventSummary = {
   avg_green_flag_overtakes: number;
   avg_safety_car_lap?: number | null;
   turning_points: string[];
+  circuit_diagnostics: CircuitDiagnostics;
+  strategy_diagnostics: StrategyDiagnostics;
+  movement_summary: MovementSummary;
+  event_timing: EventTimingSummary;
+  race_phases: RacePhaseSummary[];
+  evolution_summary: string[];
 };
 
 export type ScenarioSummary = {

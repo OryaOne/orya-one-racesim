@@ -56,6 +56,9 @@ class LapRaceEngine:
 
         turning_points = list(events.narrative)
         green_overtakes = 0
+        lap_pit_stops = [0 for _ in range(self.track.laps)]
+        lap_overtakes = [0 for _ in range(self.track.laps)]
+        lap_volatility = [0.0 for _ in range(self.track.laps)]
 
         for lap in range(1, self.track.laps + 1):
             status = events.status_for_lap(lap)
@@ -70,6 +73,7 @@ class LapRaceEngine:
                     continue
 
                 pit_reason = self._pit_reason(state, lap, wetness, status, events, sorted_states)
+                pit_stops_before_lap = state.pit_stops
                 lap_time = self._lap_time_for_driver(
                     state=state,
                     lap=lap,
@@ -88,7 +92,10 @@ class LapRaceEngine:
 
                 if status == "green" and attack_plan.get(state.profile.driver.id, AttackPlan()).overtake_success:
                     green_overtakes += 1
+                    lap_overtakes[lap - 1] += 1
                     state.overtake_count += 1
+                if state.pit_stops > pit_stops_before_lap:
+                    lap_pit_stops[lap - 1] += state.pit_stops - pit_stops_before_lap
 
                 dnf_triggered, incident_loss = self._resolve_incident(
                     state=state,
@@ -115,6 +122,22 @@ class LapRaceEngine:
             if lap in events.restart_laps:
                 turning_points.append(f"lap {lap} restart compresses the field and reopens attack windows")
 
+            status_pressure = {
+                "green": 0.12,
+                "vsc": 0.42,
+                "safety_car": 0.58,
+                "red_flag": 0.72,
+            }[status]
+            lap_volatility[lap - 1] = min(
+                1.0,
+                status_pressure
+                + events.event_pressure * 0.28
+                + wetness * 0.22
+                + (0.18 if lap in events.restart_laps else 0.0)
+                + lap_pit_stops[lap - 1] / max(3, len(self.profiles)) * 1.25
+                + lap_overtakes[lap - 1] / max(3, len(self.profiles)) * 1.5,
+            )
+
         finish_order = self._final_order(states)
         summaries: dict[str, DriverRunSummary] = {}
         total_pit_stops = 0
@@ -131,6 +154,7 @@ class LapRaceEngine:
                 else float(state.completed_laps or self.track.laps)
             )
             first_pit_lap = state.pit_records[0].lap if state.pit_records else None
+            stint_path = [state.profile.strategy.compound_sequence[0], *[record.compound_in for record in state.pit_records]]
             pace_projection = (
                 state.diagnostics.pace_component
                 + state.diagnostics.track_fit_bonus
@@ -163,6 +187,8 @@ class LapRaceEngine:
                 dnf_lap=state.dnf_lap,
                 pit_stops=state.pit_stops,
                 pit_laps=[record.lap for record in state.pit_records],
+                stint_path=stint_path,
+                stint_lengths=list(state.stint_laps),
                 average_stint_length=round(average_stint_length, 2),
                 average_first_pit_lap=float(first_pit_lap) if first_pit_lap is not None else None,
                 overtakes=state.overtake_count,
@@ -209,6 +235,13 @@ class LapRaceEngine:
             total_pit_stops=total_pit_stops,
             safety_car_laps=safety_car_laps,
             turning_points=turning_points[:4],
+            weather_shift_lap=events.weather_shift_lap,
+            drying_lap=events.drying_lap,
+            pit_discount=events.pit_discount,
+            neutralization_windows=[(window.kind, window.start_lap, window.end_lap) for window in events.neutralizations],
+            lap_pit_stops=lap_pit_stops,
+            lap_overtakes=lap_overtakes,
+            lap_volatility=lap_volatility,
         )
 
     def _initialize_grid(self, rng: random.Random) -> dict[str, DriverRaceState]:

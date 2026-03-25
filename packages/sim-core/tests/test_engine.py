@@ -59,6 +59,12 @@ def test_simulation_returns_ranked_driver_results():
     assert response.event_summary.circuit_diagnostics.overtake_suppression_factor > 0
     assert response.event_summary.strategy_diagnostics.avg_stop_count >= 0
     assert response.event_summary.strategy_diagnostics.strategy_sensitivity_index > 0
+    assert response.event_summary.movement_summary.avg_overtakes_per_simulation >= 0
+    assert response.event_summary.event_timing.safety_car_leverage_score >= 0
+    assert len(response.event_summary.race_phases) == 4
+    assert response.event_summary.evolution_summary
+    assert response.drivers[0].primary_stint_path
+    assert response.drivers[0].first_pit_window_start is None or response.drivers[0].first_pit_window_end is not None
 
 
 def test_named_circuits_hold_extreme_leverage_profiles():
@@ -469,6 +475,44 @@ def test_weather_crossover_changes_pit_windows():
         (driver.average_first_pit_lap or 0) != (wet_driver.average_first_pit_lap or 0)
         for driver, wet_driver in zip(dry.drivers[:5], wet.drivers[:5], strict=False)
     )
+
+
+def test_race_evolution_outputs_surface_stint_paths_and_phase_windows():
+    service = SimulationService()
+    response = service.simulate(
+        SimulationRequest(
+            grand_prix_id="italian-grand-prix",
+            weather_preset_id="dry-baseline",
+            simulation_runs=90,
+        )
+    )
+
+    lead_driver = response.drivers[0]
+    assert lead_driver.primary_stint_path
+    assert lead_driver.primary_stint_lengths
+    assert len(response.event_summary.race_phases) == 4
+    assert response.event_summary.strategy_diagnostics.stop_count_distribution
+    assert response.event_summary.strategy_diagnostics.first_stop_window_start is not None
+    assert response.event_summary.strategy_diagnostics.first_stop_window_end is not None
+    assert response.event_summary.race_phases[0].start_lap == 1
+    assert response.event_summary.race_phases[-1].end_lap == get_track("italian-grand-prix").laps
+
+
+def test_weather_sensitive_runs_surface_crossover_and_disruption_windows():
+    service = SimulationService()
+    response = service.simulate(
+        SimulationRequest(
+            grand_prix_id="belgian-grand-prix",
+            weather_preset_id="rain-crossover-threat",
+            simulation_runs=100,
+            environment=EnvironmentControls(rain_onset=0.72, mixed_conditions=0.84, dry_race=0.18),
+        )
+    )
+
+    assert response.event_summary.event_timing.weather_crossover_window_start is not None
+    assert response.event_summary.event_timing.weather_crossover_window_end is not None
+    assert response.event_summary.event_timing.safety_car_leverage_score > 0
+    assert any("first-stop pressure opens" in item for item in response.event_summary.evolution_summary)
 
 
 def test_spa_weather_swing_is_more_volatile_than_monaco_stable_dry():
