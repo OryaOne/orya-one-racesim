@@ -7,6 +7,8 @@ import {
   AlertTriangle,
   ArrowRight,
   BarChart3,
+  ChevronDown,
+  ChevronUp,
   Flag,
   Loader2,
   Radar,
@@ -345,6 +347,81 @@ function stintLengthsLabel(lengths: number[]) {
   return lengths.map((length) => `L${Math.round(length)}`).join(" / ");
 }
 
+function formatAveragePerRun(value?: number | null, digits = 1) {
+  if (value == null || Number.isNaN(value)) {
+    return "Pending";
+  }
+  return `${value.toFixed(digits)} avg / run`;
+}
+
+function formatAveragePerDriver(value?: number | null, digits = 1) {
+  if (value == null || Number.isNaN(value)) {
+    return "Pending";
+  }
+  return `${value.toFixed(digits)} avg / driver`;
+}
+
+function formatScoreOutOf100(value?: number | null) {
+  if (value == null || Number.isNaN(value)) {
+    return "Pending";
+  }
+  return `${Math.round(value * 10)}/100`;
+}
+
+function formatCompactScore(value?: number | null, digits = 1) {
+  if (value == null || Number.isNaN(value)) {
+    return "Pending";
+  }
+  return value.toFixed(digits);
+}
+
+function summarizePhaseLoad(value: number, type: "pit" | "move") {
+  if (type === "pit") {
+    if (value < 0.18) {
+      return "Low stop pressure";
+    }
+    if (value < 0.34) {
+      return "Measured stop pressure";
+    }
+    return "High stop pressure";
+  }
+
+  if (value < 1.2) {
+    return "Low move rate";
+  }
+  if (value < 2.8) {
+    return "Measured move rate";
+  }
+  return "High move rate";
+}
+
+function presetMetaLabel(preset: (typeof DEMO_PRESETS)[number], defaults: DefaultsPayload) {
+  const gp = defaults.grands_prix.find((item) => item.id === preset.grand_prix_id)?.name ?? "Scenario";
+  const weather = defaults.weather_presets.find((item) => item.id === preset.weather_preset_id)?.label ?? "Weather";
+  return `${gp} · ${weather} · ${preset.simulation_runs} runs`;
+}
+
+function DisclosureButton({
+  expanded,
+  onToggle,
+  label,
+}: {
+  expanded: boolean;
+  onToggle: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[9px] uppercase tracking-[0.18em] text-muted-foreground transition hover:border-white/18 hover:text-white"
+    >
+      <span>{expanded ? "Hide" : "Show"} {label}</span>
+      {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+    </button>
+  );
+}
+
 function SectionFrame({
   title,
   subtitle,
@@ -584,7 +661,7 @@ function MetricPanel({
     <div className="min-w-0 overflow-hidden rounded-[12px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.012))] px-3 py-2.5">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 pr-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{label}</div>
-        <Badge variant={tone} className="max-w-[48%] shrink min-w-0 truncate px-2 py-0.5 text-[9px]">
+        <Badge variant={tone} className="shrink-0 whitespace-nowrap px-2 py-0.5 text-[9px]">
           {badgeLabel ?? label.split(" ")[0]}
         </Badge>
       </div>
@@ -684,31 +761,57 @@ function ControlRailNav({
   );
 }
 
-function TimingStrip({ drivers }: { drivers: DriverResult[] }) {
+function TimingStrip({
+  drivers,
+  expanded = false,
+}: {
+  drivers: DriverResult[];
+  expanded?: boolean;
+}) {
   return (
-    <div className="grid gap-1.5 md:grid-cols-2">
+    <div className="grid gap-2 2xl:grid-cols-2">
       {drivers.map((driver, index) => (
         <div
           key={driver.driver_id}
-          className="grid grid-cols-[28px_minmax(0,1fr)_repeat(3,48px)] items-center gap-1.5 rounded-[10px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))] px-2 py-1.5 md:grid-cols-[30px_minmax(0,1fr)_repeat(3,50px)]"
+          className="rounded-[10px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))] px-2.5 py-2"
         >
-          <div className="font-display text-[1rem] leading-none text-white">P{index + 1}</div>
-          <div className="min-w-0">
-            <div className="truncate text-[12px] text-white">{driver.driver_name}</div>
-            <div className="mt-0.5 truncate font-mono text-[8px] uppercase tracking-[0.16em] text-muted-foreground">{driver.team_name}</div>
+          <div className="grid grid-cols-[32px_minmax(0,1fr)_72px_72px] items-center gap-2">
+            <div className="font-display text-[1rem] leading-none text-white">P{index + 1}</div>
+            <div className="min-w-0">
+              <div className="truncate text-[12px] text-white">{driver.driver_name}</div>
+              <div className="mt-0.5 truncate font-mono text-[8px] uppercase tracking-[0.16em] text-muted-foreground">{driver.team_name}</div>
+            </div>
+            <div className="rounded-[8px] border border-white/8 bg-black/25 px-2 py-1 text-center" title="Win probability">
+              <div className="font-mono text-[8px] uppercase tracking-[0.16em] text-muted-foreground">Win odds</div>
+              <div className="mt-0.5 text-[11px] leading-none text-white">{formatPct(driver.win_probability)}</div>
+            </div>
+            <div className="rounded-[8px] border border-white/8 bg-black/25 px-2 py-1 text-center" title="Expected championship points">
+              <div className="font-mono text-[8px] uppercase tracking-[0.16em] text-muted-foreground">Exp pts</div>
+              <div className="mt-0.5 text-[11px] leading-none text-white">{driver.expected_points.toFixed(1)}</div>
+            </div>
           </div>
-          <div className="rounded-[8px] border border-white/8 bg-black/25 px-1.5 py-1 text-center">
-            <div className="font-mono text-[8px] uppercase tracking-[0.16em] text-muted-foreground">Win</div>
-            <div className="mt-0.5 text-[11px] leading-none text-white">{formatPct(driver.win_probability)}</div>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <div className="rounded-[8px] border border-white/8 bg-black/20 px-2 py-1.5 text-center">
+              <div className="font-mono text-[8px] uppercase tracking-[0.16em] text-muted-foreground">Strategy fit</div>
+              <div className="mt-0.5 text-[11px] leading-none text-white">{formatCompactScore(driver.strategy_fit_score)}</div>
+            </div>
+            <div className="rounded-[8px] border border-white/8 bg-black/20 px-2 py-1.5 text-center">
+              <div className="font-mono text-[8px] uppercase tracking-[0.16em] text-muted-foreground">Stops</div>
+              <div className="mt-0.5 text-[11px] leading-none text-white">{driver.expected_stop_count.toFixed(1)} avg</div>
+            </div>
           </div>
-          <div className="rounded-[8px] border border-white/8 bg-black/25 px-1.5 py-1 text-center">
-            <div className="font-mono text-[8px] uppercase tracking-[0.16em] text-muted-foreground">Pts</div>
-            <div className="mt-0.5 text-[11px] leading-none text-white">{driver.expected_points.toFixed(1)}</div>
-          </div>
-          <div className="rounded-[8px] border border-white/8 bg-black/25 px-1.5 py-1 text-center">
-            <div className="font-mono text-[8px] uppercase tracking-[0.16em] text-muted-foreground">Fit</div>
-            <div className="mt-0.5 text-[11px] leading-none text-white">{driver.strategy_fit_score.toFixed(1)}</div>
-          </div>
+          {expanded ? (
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <div className="rounded-[8px] border border-white/8 bg-black/25 px-2 py-1.5 text-center">
+                <div className="font-mono text-[8px] uppercase tracking-[0.16em] text-muted-foreground">Net delta</div>
+                <div className="mt-0.5 text-[11px] leading-none text-white">{formatSigned(Number(driver.net_position_delta.toFixed(1)))}</div>
+              </div>
+              <div className="rounded-[8px] border border-white/8 bg-black/25 px-2 py-1.5 text-center">
+                <div className="font-mono text-[8px] uppercase tracking-[0.16em] text-muted-foreground">Strategy success</div>
+                <div className="mt-0.5 text-[11px] leading-none text-white">{formatPct(driver.strategy_success_rate)}</div>
+              </div>
+            </div>
+          ) : null}
         </div>
       ))}
     </div>
@@ -732,9 +835,11 @@ function StopMixBar({ stops, share }: { stops: number; share: number }) {
 function StintSummaryCard({
   driver,
   accent,
+  expanded = false,
 }: {
   driver: DriverResult;
   accent: "default" | "info" | "success";
+  expanded?: boolean;
 }) {
   return (
     <div className="rounded-[14px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.012))] p-3.5">
@@ -747,21 +852,12 @@ function StintSummaryCard({
       </div>
       <div className="mt-3 space-y-3">
         <div>
-          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Primary path</div>
+          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Stint path</div>
           <div className="mt-1.5 text-[13px] text-white">{stintPathLabel(driver.primary_stint_path)}</div>
           <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
-            {stintLengthsLabel(driver.primary_stint_lengths)}
+            Avg stint lengths · {stintLengthsLabel(driver.primary_stint_lengths)}
           </div>
         </div>
-        {driver.alternate_stint_path.length ? (
-          <div>
-            <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Alternate</div>
-            <div className="mt-1.5 text-[12px] text-white/90">{stintPathLabel(driver.alternate_stint_path)}</div>
-            <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
-              {stintLengthsLabel(driver.alternate_stint_lengths)}
-            </div>
-          </div>
-        ) : null}
         <div className="grid grid-cols-2 gap-2">
           <div className="rounded-[10px] border border-white/8 bg-black/20 p-2.5">
             <div className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground">First stop</div>
@@ -772,6 +868,15 @@ function StintSummaryCard({
             <div className="mt-1 text-white">{formatLapWindow(driver.first_pit_window_start, driver.first_pit_window_end)}</div>
           </div>
         </div>
+        {expanded && driver.alternate_stint_path.length ? (
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Alternate</div>
+            <div className="mt-1.5 text-[12px] text-white/90">{stintPathLabel(driver.alternate_stint_path)}</div>
+            <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">
+              Avg stint lengths · {stintLengthsLabel(driver.alternate_stint_lengths)}
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -779,8 +884,10 @@ function StintSummaryCard({
 
 function RaceTimelineStrip({
   phases,
+  mode = "detail",
 }: {
   phases: SimulationResponse["event_summary"]["race_phases"];
+  mode?: "compact" | "detail";
 }) {
   return (
     <div className="grid gap-2 lg:grid-cols-4">
@@ -798,22 +905,39 @@ function RaceTimelineStrip({
             </div>
             <Badge variant={signalVariant(phase.volatility)}>{volatilityLabel(phase.volatility)}</Badge>
           </div>
-          <div className="mt-3 grid gap-2">
-            <SignalMeter label="Phase risk" value={phase.volatility} secondary={phase.volatility.toFixed(2)} tone={signalVariant(phase.volatility)} />
-            <SignalMeter
-              label="Pit pressure"
-              value={Math.min(1, phase.pit_pressure * 2.2)}
-              secondary={`${phase.pit_pressure.toFixed(2)} / drv`}
-              tone="info"
-            />
-            <SignalMeter
-              label="Moves"
-              value={Math.min(1, phase.overtake_load / 8)}
-              secondary={`${phase.overtake_load.toFixed(1)} / sim`}
-              tone="default"
-            />
-          </div>
-          <div className="mt-3 line-clamp-3 text-[11px] leading-5 text-muted-foreground">{phase.summary}</div>
+          {mode === "compact" ? (
+            <div className="mt-3 space-y-2">
+              <div className="rounded-[10px] border border-white/8 bg-black/20 px-2.5 py-2">
+                <div className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground">Primary pressure</div>
+                <div className="mt-1 text-[12px] text-white">{summarizePhaseLoad(phase.pit_pressure, "pit")}</div>
+              </div>
+              <div className="line-clamp-2 text-[11px] leading-5 text-muted-foreground">{phase.summary}</div>
+            </div>
+          ) : (
+            <>
+              <div className="mt-3 grid gap-2">
+                <SignalMeter
+                  label="Phase risk"
+                  value={phase.volatility}
+                  secondary={`${phase.volatility.toFixed(2)} risk score`}
+                  tone={signalVariant(phase.volatility)}
+                />
+                <SignalMeter
+                  label="Pit pressure"
+                  value={Math.min(1, phase.pit_pressure * 2.2)}
+                  secondary={formatAveragePerDriver(phase.pit_pressure, 2)}
+                  tone="info"
+                />
+                <SignalMeter
+                  label="Move rate"
+                  value={Math.min(1, phase.overtake_load / 8)}
+                  secondary={formatAveragePerRun(phase.overtake_load, 1)}
+                  tone="default"
+                />
+              </div>
+              <div className="mt-3 line-clamp-3 text-[11px] leading-5 text-muted-foreground">{phase.summary}</div>
+            </>
+          )}
         </div>
       ))}
     </div>
@@ -823,19 +947,19 @@ function RaceTimelineStrip({
 function DriverTable({ drivers }: { drivers: DriverResult[] }) {
   return (
     <div className="overflow-x-auto rounded-[16px] border border-white/8">
-      <div className="min-w-[1040px]">
-        <div className="grid grid-cols-[44px_1.6fr_1fr_repeat(7,minmax(82px,1fr))] gap-3 bg-white/[0.04] px-4 py-3 text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-          <span>Pos</span>
-          <span>Driver</span>
-          <span>Strategy</span>
-          <span>Win</span>
-          <span>Podium</span>
-          <span>Points</span>
-          <span>DNF</span>
-          <span>Volatility</span>
-          <span>Fit</span>
-          <span>Exp</span>
-        </div>
+        <div className="min-w-[1040px]">
+          <div className="grid grid-cols-[44px_1.6fr_1fr_repeat(7,minmax(82px,1fr))] gap-3 bg-white/[0.04] px-4 py-3 text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+            <span>Pos</span>
+            <span>Driver</span>
+            <span>Strategy</span>
+            <span>Win odds</span>
+            <span>Podium</span>
+            <span>Exp pts</span>
+            <span>DNF</span>
+            <span>Volatility</span>
+            <span>Strat fit</span>
+            <span>Expected</span>
+          </div>
         {drivers.map((driver, index) => (
           <div
             key={driver.driver_id}
@@ -849,7 +973,7 @@ function DriverTable({ drivers }: { drivers: DriverResult[] }) {
             </div>
             <div>
               <div className="text-white">{driver.assigned_strategy_name}</div>
-              <div className="mt-1 text-xs text-muted-foreground">{formatPct(driver.strategy_success_rate)} fit</div>
+              <div className="mt-1 text-xs text-muted-foreground">{formatPct(driver.strategy_success_rate)} success rate</div>
             </div>
             <div>{formatPct(driver.win_probability)}</div>
             <div>{formatPct(driver.podium_probability)}</div>
@@ -874,6 +998,9 @@ export function SimulatorWorkspace() {
   const [suggestions, setSuggestions] = useState<StrategySuggestion[]>([]);
   const [analyticsView, setAnalyticsView] = useState<"order" | "strategy" | "diagnostics">("order");
   const [controlTab, setControlTab] = useState<ControlSectionId>("weekend");
+  const [showPresetDetail, setShowPresetDetail] = useState(false);
+  const [showProjectedFrontDetail, setShowProjectedFrontDetail] = useState(false);
+  const [showMovementDetail, setShowMovementDetail] = useState(false);
   const [loadingDefaults, setLoadingDefaults] = useState(true);
   const [loadingSimulation, setLoadingSimulation] = useState(false);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
@@ -1038,6 +1165,7 @@ export function SimulatorWorkspace() {
   const eventTiming = deferredSimulation?.event_summary.event_timing;
   const racePhases = deferredSimulation?.event_summary.race_phases ?? [];
   const stopMix = strategyDiagnostics?.stop_count_distribution ?? [];
+  const stopMixLeader = stopMix[0];
   const biggestMovers = deferredDrivers
     .slice()
     .sort((left, right) => Math.abs(right.net_position_delta) - Math.abs(left.net_position_delta))
@@ -1050,6 +1178,7 @@ export function SimulatorWorkspace() {
     )
     .slice(0, 3);
   const stintDrivers = topDrivers.slice(0, 2);
+  const mainTurningPoints = deferredSimulation?.event_summary.evolution_summary.slice(0, 3) ?? [];
 
   const currentVolatility = deferredSimulation?.event_summary.volatility_index ?? (
     form.environment.randomness_intensity * 0.32
@@ -1170,7 +1299,7 @@ export function SimulatorWorkspace() {
                   </div>
                 ) : (
                   <div className="mt-2 line-clamp-2 font-mono text-[9px] uppercase tracking-[0.1em] text-muted-foreground">
-                    Run to load top four, win share, points, and strategy fit.
+                    Run to load the projected top four, win odds, expected points, and strategy detail.
                   </div>
                 )}
               </div>
@@ -1190,26 +1319,37 @@ export function SimulatorWorkspace() {
               <div className="min-w-0 lg:pl-1">
                 {controlTab === "weekend" ? (
                   <div className="grid gap-2.5">
-                <div className="grid gap-1.5">
-                  {DEMO_PRESETS.map((preset) => (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      onClick={() => {
-                        const next = applyDemoPreset(defaults, form, preset.id);
-                        setForm(next);
-                        void requestSuggestions(next, { suppressError: true });
-                      }}
-                      className="rounded-[10px] border border-white/8 bg-white/[0.03] px-3 py-2.5 text-left transition duration-200 hover:border-cyan-300/30 hover:bg-white/[0.05] active:scale-[0.99]"
-                    >
+                    <div className="grid gap-1.5">
                       <div className="flex items-center justify-between gap-3">
-                        <div className="text-sm text-white">{preset.label}</div>
-                        <Badge variant="info">{preset.simulation_runs}</Badge>
+                        <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">Weekend presets</div>
+                        <DisclosureButton expanded={showPresetDetail} onToggle={() => setShowPresetDetail((value) => !value)} label="preset notes" />
                       </div>
-                      <div className="mt-1 line-clamp-1 font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">{preset.description}</div>
-                    </button>
-                  ))}
-                </div>
+                      {DEMO_PRESETS.map((preset) => (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          onClick={() => {
+                            const next = applyDemoPreset(defaults, form, preset.id);
+                            setForm(next);
+                            void requestSuggestions(next, { suppressError: true });
+                          }}
+                          className="rounded-[10px] border border-white/8 bg-white/[0.03] px-3 py-2.5 text-left transition duration-200 hover:border-cyan-300/30 hover:bg-white/[0.05] active:scale-[0.99]"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="truncate text-sm text-white">{preset.label}</div>
+                              <div className="mt-1 line-clamp-1 font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">
+                                {presetMetaLabel(preset, defaults)}
+                              </div>
+                            </div>
+                            <Badge variant="info">{preset.simulation_runs}</Badge>
+                          </div>
+                          {showPresetDetail ? (
+                            <div className="mt-1.5 line-clamp-2 text-[11px] leading-5 text-muted-foreground">{preset.description}</div>
+                          ) : null}
+                        </button>
+                      ))}
+                    </div>
                 <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-1">
                   <SelectField
                     label="Grand Prix"
@@ -1520,14 +1660,14 @@ export function SimulatorWorkspace() {
                       <div className="flex items-center justify-between gap-3">
                         <div>
                           <div className="text-[10px] uppercase tracking-[0.24em] text-cyan-200">Execution strip</div>
-                          <div className="mt-1 text-sm text-white">How the race is expected to unfold lap by lap.</div>
+                          <div className="mt-1 text-sm text-white">Where the race changes, when stops open, and when volatility rises.</div>
                         </div>
                         <Badge variant={signalVariant(movementSummary?.race_fluidity_score ?? currentVolatility)}>
                           {movementSummary?.overtaking_intensity ?? "Preview"}
                         </Badge>
                       </div>
                       <div className="mt-3">
-                        <RaceTimelineStrip phases={racePhases} />
+                        <RaceTimelineStrip phases={racePhases} mode="compact" />
                       </div>
                     </div>
 
@@ -1543,8 +1683,8 @@ export function SimulatorWorkspace() {
                         label="Stop count"
                         value={`${strategyDiagnostics?.avg_stop_count.toFixed(1) ?? "0.0"} avg`}
                         detail={
-                          stopMix.length
-                            ? `${stopMix[0]?.stops ?? 0}-stop leads at ${formatPct(stopMix[0]?.share ?? 0)}`
+                          stopMixLeader
+                            ? `${stopMixLeader.stops}-stop path leads at ${formatPct(stopMixLeader.share)}`
                             : "Awaiting stop mix"
                         }
                         tone="default"
@@ -1552,10 +1692,10 @@ export function SimulatorWorkspace() {
                       />
                       <MetricPanel
                         label="Overtake load"
-                        value={movementSummary ? movementSummary.avg_overtakes_per_simulation.toFixed(1) : "Pending"}
+                        value={movementSummary ? formatAveragePerRun(movementSummary.avg_overtakes_per_simulation) : "Pending"}
                         detail={
                           movementSummary
-                            ? `${movementSummary.avg_position_changes_per_driver.toFixed(1)} pos changes / driver`
+                            ? formatAveragePerDriver(movementSummary.avg_position_changes_per_driver)
                             : "Awaiting movement profile"
                         }
                         tone={signalVariant(movementSummary?.race_fluidity_score ?? 0)}
@@ -1563,10 +1703,10 @@ export function SimulatorWorkspace() {
                       />
                       <MetricPanel
                         label="SC leverage"
-                        value={eventTiming ? `${Math.round(eventTiming.safety_car_leverage_score * 100)}/100` : "Pending"}
+                        value={eventTiming ? formatScoreOutOf100(eventTiming.safety_car_leverage_score) : "Pending"}
                         detail={
                           eventTiming
-                            ? `${eventTiming.average_neutralized_pit_gain.toFixed(1)}s neutral gain · ${eventTiming.leverage_phase}`
+                            ? `${eventTiming.average_neutralized_pit_gain.toFixed(1)}s avg pit gain under SC / VSC · ${eventTiming.leverage_phase}`
                             : "Awaiting neutralization profile"
                         }
                         tone="warning"
@@ -1581,7 +1721,7 @@ export function SimulatorWorkspace() {
                           <Badge variant="info">{deferredSimulation.event_summary.dominant_factor}</Badge>
                         </div>
                         <div className="mt-3 grid gap-2">
-                          {deferredSimulation.event_summary.evolution_summary.map((item) => (
+                          {mainTurningPoints.map((item) => (
                             <div
                               key={item}
                               className="rounded-[10px] border border-white/8 bg-white/[0.03] px-3 py-2 text-[11px] leading-5 text-muted-foreground"
@@ -1637,37 +1777,44 @@ export function SimulatorWorkspace() {
                       <div className="flex items-center justify-between gap-3">
                         <div>
                           <div className="text-[10px] uppercase tracking-[0.24em] text-cyan-200">Projected front</div>
-                          <div className="mt-1 text-sm text-white">Who controls the race once the key windows open.</div>
+                          <div className="mt-1 text-sm text-white">Who controls the race when the first key windows open.</div>
                         </div>
-                        <Badge variant="info">{topDrivers.length} cars</Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="info">{topDrivers.length} cars</Badge>
+                          <DisclosureButton
+                            expanded={showProjectedFrontDetail}
+                            onToggle={() => setShowProjectedFrontDetail((value) => !value)}
+                            label="driver detail"
+                          />
+                        </div>
                       </div>
                       <div className="mt-3">
-                        <TimingStrip drivers={topDrivers} />
+                        <TimingStrip drivers={topDrivers} expanded={showProjectedFrontDetail} />
                       </div>
-                    </div>
-
-                    <div className="grid gap-3">
-                      {stintDrivers.map((driver, index) => (
-                        <StintSummaryCard
-                          key={driver.driver_id}
-                          driver={driver}
-                          accent={index === 0 ? "default" : "info"}
-                        />
-                      ))}
+                      <div className="mt-3 grid gap-3">
+                        {stintDrivers.map((driver, index) => (
+                          <StintSummaryCard
+                            key={driver.driver_id}
+                            driver={driver}
+                            accent={index === 0 ? "default" : "info"}
+                            expanded={showProjectedFrontDetail}
+                          />
+                        ))}
+                      </div>
                     </div>
 
                     <div className="grid gap-2.5 md:grid-cols-2">
                       <MetricPanel
                         label="Lead car"
                         value={leadDriver ? leadDriver.driver_name : "Pending"}
-                        detail={leadDriver ? `${formatPct(leadDriver.win_probability)} win · P${leadDriver.expected_finish_position.toFixed(1)} expected` : "Pending"}
+                        detail={leadDriver ? `${formatPct(leadDriver.win_probability)} win odds · P${leadDriver.expected_finish_position.toFixed(1)} expected finish` : "Pending"}
                         tone="default"
                         badgeLabel="Lead"
                       />
                       <MetricPanel
                         label="Podium lane"
                         value={leadDriver ? formatPct(leadDriver.podium_probability) : "Pending"}
-                        detail={leadDriver ? `${leadDriver.team_name} leads the board` : "Pending"}
+                        detail={leadDriver ? `${leadDriver.team_name} leads the projected front` : "Pending"}
                         tone="success"
                         badgeLabel="Podium"
                       />
@@ -1676,7 +1823,7 @@ export function SimulatorWorkspace() {
                         value={biggestMovers[0] ? biggestMovers[0].driver_name : "Pending"}
                         detail={
                           biggestMovers[0]
-                            ? `${biggestMovers[0].net_position_delta > 0 ? "+" : ""}${biggestMovers[0].net_position_delta.toFixed(1)} net delta · ${biggestMovers[0].average_position_changes.toFixed(1)} changes`
+                            ? `${biggestMovers[0].net_position_delta > 0 ? "+" : ""}${biggestMovers[0].net_position_delta.toFixed(1)} net delta · ${formatAveragePerDriver(biggestMovers[0].average_position_changes)}`
                             : "Awaiting movement signal"
                         }
                         tone="info"
@@ -1687,7 +1834,7 @@ export function SimulatorWorkspace() {
                         value={hardestToPass[0] ? hardestToPass[0].driver_name : "Pending"}
                         detail={
                           hardestToPass[0]
-                            ? `${hardestToPass[0].average_overtakes.toFixed(1)} avg overtakes faced`
+                            ? `${formatAveragePerRun(hardestToPass[0].average_overtakes)} faced in traffic`
                             : "Awaiting traffic signal"
                         }
                         tone="warning"
@@ -1768,8 +1915,8 @@ export function SimulatorWorkspace() {
                         />
                         <MetricPanel
                           label="SC leverage"
-                          value={eventTiming ? `${Math.round(eventTiming.safety_car_leverage_score * 100)}/100` : "Pending"}
-                          detail={eventTiming ? `${eventTiming.average_neutralized_pit_gain.toFixed(1)}s pit gain` : "Awaiting run"}
+                          value={eventTiming ? formatScoreOutOf100(eventTiming.safety_car_leverage_score) : "Pending"}
+                          detail={eventTiming ? `${eventTiming.average_neutralized_pit_gain.toFixed(1)}s avg pit gain under SC / VSC` : "Awaiting run"}
                           tone="warning"
                           badgeLabel="Neutral"
                         />
@@ -2005,37 +2152,59 @@ export function SimulatorWorkspace() {
                 />
                 <div className="grid grid-cols-2 gap-2">
                   <div className="rounded-[10px] border border-white/8 bg-black/20 p-2.5">
-                    <div className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground">Overtakes</div>
-                    <div className="mt-1 text-sm text-white">{movementSummary.avg_overtakes_per_simulation.toFixed(1)} / sim</div>
+                    <div className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground">Avg overtakes</div>
+                    <div className="mt-1 text-sm text-white">{formatAveragePerRun(movementSummary.avg_overtakes_per_simulation)}</div>
                   </div>
                   <div className="rounded-[10px] border border-white/8 bg-black/20 p-2.5">
-                    <div className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground">Pos changes</div>
-                    <div className="mt-1 text-sm text-white">{movementSummary.avg_position_changes_per_driver.toFixed(1)} / drv</div>
+                    <div className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground">Avg position changes</div>
+                    <div className="mt-1 text-sm text-white">{formatAveragePerDriver(movementSummary.avg_position_changes_per_driver)}</div>
                   </div>
                 </div>
                 <div className="grid gap-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">Track traffic read</div>
+                    <DisclosureButton expanded={showMovementDetail} onToggle={() => setShowMovementDetail((value) => !value)} label="more" />
+                  </div>
                   <div className="rounded-[10px] border border-white/8 bg-white/[0.03] p-2.5">
-                    <div className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground">Likely movers</div>
-                    <div className="mt-2 grid gap-1.5">
-                      {biggestMovers.map((driver) => (
-                        <div key={driver.driver_id} className="flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
-                          <span className="truncate text-white">{driver.driver_name}</span>
-                          <span>{formatSigned(driver.net_position_delta)}</span>
-                        </div>
-                      ))}
+                    <div className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground">Likely mover</div>
+                    <div className="mt-2 flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
+                      <span className="truncate text-white">{biggestMovers[0]?.driver_name ?? "Pending"}</span>
+                      <span>{biggestMovers[0] ? `${formatSigned(Number(biggestMovers[0].net_position_delta.toFixed(1)))} net` : "Awaiting run"}</span>
                     </div>
                   </div>
                   <div className="rounded-[10px] border border-white/8 bg-white/[0.03] p-2.5">
-                    <div className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground">Hardest to move</div>
-                    <div className="mt-2 grid gap-1.5">
-                      {hardestToPass.map((driver) => (
-                        <div key={driver.driver_id} className="flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
-                          <span className="truncate text-white">{driver.driver_name}</span>
-                          <span>{driver.average_overtakes.toFixed(1)} OT</span>
-                        </div>
-                      ))}
+                    <div className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground">Hardest to clear</div>
+                    <div className="mt-2 flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
+                      <span className="truncate text-white">{hardestToPass[0]?.driver_name ?? "Pending"}</span>
+                      <span>{hardestToPass[0] ? formatAveragePerRun(hardestToPass[0].average_overtakes) : "Awaiting run"}</span>
                     </div>
                   </div>
+                  {showMovementDetail ? (
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <div className="rounded-[10px] border border-white/8 bg-white/[0.03] p-2.5">
+                        <div className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground">Mover ladder</div>
+                        <div className="mt-2 grid gap-1.5">
+                          {biggestMovers.map((driver) => (
+                            <div key={driver.driver_id} className="flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
+                              <span className="truncate text-white">{driver.driver_name}</span>
+                              <span>{formatSigned(Number(driver.net_position_delta.toFixed(1)))}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="rounded-[10px] border border-white/8 bg-white/[0.03] p-2.5">
+                        <div className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground">Traffic anchors</div>
+                        <div className="mt-2 grid gap-1.5">
+                          {hardestToPass.map((driver) => (
+                            <div key={driver.driver_id} className="flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
+                              <span className="truncate text-white">{driver.driver_name}</span>
+                              <span>{formatAveragePerRun(driver.average_overtakes)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             ) : (
@@ -2061,16 +2230,16 @@ export function SimulatorWorkspace() {
                 />
                 <div className="grid grid-cols-2 gap-2">
                   <div className="rounded-[10px] border border-white/8 bg-black/20 p-2.5">
-                    <div className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground">Disruption</div>
+                    <div className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground">Disruption window</div>
                     <div className="mt-1 text-sm text-white">{formatLapWindow(eventTiming.disruption_window_start, eventTiming.disruption_window_end)}</div>
                   </div>
                   <div className="rounded-[10px] border border-white/8 bg-black/20 p-2.5">
-                    <div className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground">Crossover</div>
+                    <div className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground">Crossover window</div>
                     <div className="mt-1 text-sm text-white">{formatLapWindow(eventTiming.weather_crossover_window_start, eventTiming.weather_crossover_window_end)}</div>
                   </div>
                 </div>
                 <div className="rounded-[10px] border border-white/8 bg-white/[0.03] p-2.5 text-[11px] leading-5 text-muted-foreground">
-                  Avg disruption {formatLapValue(eventTiming.average_disruption_lap)} · neutralized pit gain {eventTiming.average_neutralized_pit_gain.toFixed(1)}s · late incident risk {formatPct(eventTiming.late_race_interruption_risk)}
+                  Avg disruption at {formatLapValue(eventTiming.average_disruption_lap)} · neutralized pit gain {eventTiming.average_neutralized_pit_gain.toFixed(1)}s · late-race incident risk {formatPct(eventTiming.late_race_interruption_risk)}
                 </div>
               </div>
             ) : (
@@ -2117,14 +2286,14 @@ export function SimulatorWorkspace() {
           >
             {leaderDiagnostics ? (
               <div className="grid gap-2">
-                <SignalMeter label="Pace edge" value={Math.min(1, Math.max(0, (leaderDiagnostics.pace_edge + 1.6) / 3.2))} secondary={compactNumber(leaderDiagnostics.pace_edge)} tone="default" />
-                <SignalMeter label="Track fit" value={Math.min(1, Math.max(0, leaderDiagnostics.track_fit_score / 20))} secondary={compactNumber(leaderDiagnostics.track_fit_score)} tone="info" />
-                <SignalMeter label="Strategy comp" value={Math.min(1, Math.max(0, (leaderDiagnostics.strategy_component + 6) / 12))} secondary={compactNumber(leaderDiagnostics.strategy_component)} tone="success" />
-                <SignalMeter label="Chaos resilience" value={Math.min(1, Math.max(0, leaderDiagnostics.chaos_resilience))} secondary={compactNumber(leaderDiagnostics.chaos_resilience)} tone="success" />
+                <SignalMeter label="Pace edge" value={Math.min(1, Math.max(0, (leaderDiagnostics.pace_edge + 1.6) / 3.2))} secondary={`${compactNumber(leaderDiagnostics.pace_edge)} delta`} tone="default" />
+                <SignalMeter label="Track fit" value={Math.min(1, Math.max(0, leaderDiagnostics.track_fit_score / 20))} secondary={`${compactNumber(leaderDiagnostics.track_fit_score)} score`} tone="info" />
+                <SignalMeter label="Strategy edge" value={Math.min(1, Math.max(0, (leaderDiagnostics.strategy_component + 6) / 12))} secondary={`${compactNumber(leaderDiagnostics.strategy_component)} score`} tone="success" />
+                <SignalMeter label="Chaos resilience" value={Math.min(1, Math.max(0, leaderDiagnostics.chaos_resilience))} secondary={`${compactNumber(leaderDiagnostics.chaos_resilience)} score`} tone="success" />
               </div>
             ) : (
               <div className="rounded-[12px] border border-white/8 bg-white/[0.03] p-4 font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                Run to inspect pace edge, track fit, strategy comp, and chaos resilience.
+                Run to inspect pace edge, track fit, strategy edge, and chaos resilience.
               </div>
             )}
           </InsightCard>
