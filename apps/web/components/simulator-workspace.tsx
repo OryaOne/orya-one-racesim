@@ -78,7 +78,7 @@ const DEMO_PRESETS = [
     description: "Mixed weather, reactive pit windows, wider outcome spread.",
     grand_prix_id: "belgian-grand-prix",
     weather_preset_id: "rain-crossover-threat",
-    simulation_runs: 220,
+    simulation_runs: 180,
     complexity_level: "balanced" as const,
     field_strategy_preset: "",
     weights: {
@@ -109,7 +109,7 @@ const DEMO_PRESETS = [
     description: "Qualifying-led race with low pass volume and narrow pit windows.",
     grand_prix_id: "monaco-grand-prix",
     weather_preset_id: "dry-baseline",
-    simulation_runs: 180,
+    simulation_runs: 160,
     complexity_level: "balanced" as const,
     field_strategy_preset: "qualifying-track-position",
     weights: {
@@ -133,7 +133,7 @@ const DEMO_PRESETS = [
     description: "Low-drag setup with stronger overtaking and undercut pressure.",
     grand_prix_id: "italian-grand-prix",
     weather_preset_id: "dry-baseline",
-    simulation_runs: 220,
+    simulation_runs: 190,
     complexity_level: "balanced" as const,
     field_strategy_preset: "",
     weights: {
@@ -1561,7 +1561,7 @@ export function SimulatorWorkspace() {
                           onChange={(event) => setForm({ ...form, simulation_runs: Number(event.target.value) })}
                           className="min-h-10 rounded-[10px] border border-white/10 bg-[#090c11] px-3.5 py-2.5 text-sm text-white outline-none focus:border-primary/60"
                         />
-                        <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">160-260 live-safe. Heavy weather/chaos gets capped lower.</span>
+                        <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">120-220 live-safe. Heavy weather/chaos gets an emergency fallback run cap.</span>
                       </label>
                       <SelectField
                         label="Simulation detail"

@@ -22,6 +22,11 @@ type LiveSimulationPayload = {
   };
 };
 
+type SimulateRequestShape = {
+  body?: string;
+  payload?: LiveSimulationPayload;
+};
+
 function resolveApiBaseUrl() {
   const value =
     process.env.API_URL?.replace(/\/$/, "") ??
@@ -36,12 +41,12 @@ function resolveApiBaseUrl() {
 }
 
 function getLiveSafeSimulationRuns(payload: LiveSimulationPayload) {
-  let maxRuns = 260;
+  let maxRuns = 220;
 
   if (payload.complexity_level === "balanced") {
-    maxRuns = 240;
-  } else if (payload.complexity_level === "high") {
     maxRuns = 200;
+  } else if (payload.complexity_level === "high") {
+    maxRuns = 170;
   }
 
   if (payload.weather_preset_id && /(rain|crossover|storm|mixed|wet)/i.test(payload.weather_preset_id)) {
@@ -54,7 +59,7 @@ function getLiveSafeSimulationRuns(payload: LiveSimulationPayload) {
       payload.grand_prix_id,
     )
   ) {
-    maxRuns -= 20;
+    maxRuns -= 25;
   }
 
   const environment = payload.environment;
@@ -66,7 +71,7 @@ function getLiveSafeSimulationRuns(payload: LiveSimulationPayload) {
       (environment.late_race_incidents ?? 0);
 
     if ((environment.rain_onset ?? 0) >= 0.35) {
-      maxRuns -= 20;
+      maxRuns -= 25;
     }
 
     if (incidentPressure >= 0.48) {
@@ -74,11 +79,98 @@ function getLiveSafeSimulationRuns(payload: LiveSimulationPayload) {
     }
 
     if ((environment.randomness_intensity ?? 0) >= 0.58) {
-      maxRuns -= 10;
+      maxRuns -= 15;
     }
   }
 
-  return Math.max(160, Math.min(260, maxRuns));
+  return Math.max(120, Math.min(220, maxRuns));
+}
+
+function getEmergencySimulationRuns(payload: LiveSimulationPayload) {
+  const capped = getLiveSafeSimulationRuns(payload);
+
+  if (payload.complexity_level === "high") {
+    return Math.max(120, Math.min(150, capped - 20));
+  }
+
+  if (payload.complexity_level === "balanced") {
+    return Math.max(130, Math.min(165, capped - 15));
+  }
+
+  return Math.max(140, Math.min(180, capped - 10));
+}
+
+function tryParseSimulatePayload(body: string | undefined, contentType: string | null) {
+  if (!body || !contentType?.includes("application/json")) {
+    return {};
+  }
+
+  try {
+    return { body, payload: JSON.parse(body) as LiveSimulationPayload };
+  } catch {
+    return { body };
+  }
+}
+
+async function fetchWithTimeout(
+  url: string,
+  init: Omit<RequestInit, "signal">,
+  timeoutMs: number,
+) {
+  return fetch(url, {
+    ...init,
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+}
+
+async function forwardSimulationRequest(
+  url: string,
+  headers: Headers,
+  requestShape: SimulateRequestShape,
+) {
+  const init = {
+    method: "POST",
+    headers,
+    cache: "no-store" as const,
+  };
+
+  try {
+    return await fetchWithTimeout(
+      url,
+      {
+        ...init,
+        body: requestShape.body,
+      },
+      process.env.NODE_ENV === "development" ? 55000 : 32000,
+    );
+  } catch (error) {
+    const lowered = error instanceof Error ? error.message.toLowerCase() : "";
+    if (
+      process.env.NODE_ENV !== "development" &&
+      requestShape.payload &&
+      (lowered.includes("aborted") || lowered.includes("timeout"))
+    ) {
+      const emergencyRuns = getEmergencySimulationRuns(requestShape.payload);
+      const emergencyBody = JSON.stringify({
+        ...requestShape.payload,
+        simulation_runs:
+          typeof requestShape.payload.simulation_runs === "number"
+            ? Math.min(requestShape.payload.simulation_runs, emergencyRuns)
+            : emergencyRuns,
+      });
+
+      return fetchWithTimeout(
+        url,
+        {
+          ...init,
+          body: emergencyBody,
+        },
+        22000,
+      );
+    }
+
+    throw error;
+  }
 }
 
 function isHtmlErrorPayload(text: string, contentType: string | null) {
@@ -188,6 +280,7 @@ async function forward(request: NextRequest, path: string[], method: "GET" | "PO
   }
 
   let body: string | undefined;
+  let simulateRequest: SimulateRequestShape | undefined;
   if (method === "POST") {
     body = await request.text();
     if (requestPath === "simulate" && contentType?.includes("application/json") && process.env.NODE_ENV !== "development") {
@@ -197,20 +290,29 @@ async function forward(request: NextRequest, path: string[], method: "GET" | "PO
         if (typeof payload.simulation_runs === "number" && payload.simulation_runs > liveSafeRuns) {
           body = JSON.stringify({ ...payload, simulation_runs: liveSafeRuns });
         }
+        simulateRequest = tryParseSimulatePayload(body, contentType);
       } catch {
         // Preserve the raw request body if it is not valid JSON.
       }
+    } else if (requestPath === "simulate") {
+      simulateRequest = tryParseSimulatePayload(body, contentType);
     }
   }
 
   try {
-    const response = await fetch(url, {
-      method,
-      headers,
-      body,
-      cache: "no-store",
-      signal: AbortSignal.timeout(method === "GET" ? 8000 : 55000),
-    });
+    const response =
+      method === "POST" && requestPath === "simulate"
+        ? await forwardSimulationRequest(url, headers, simulateRequest ?? { body })
+        : await fetchWithTimeout(
+            url,
+            {
+              method,
+              headers,
+              body,
+              cache: "no-store",
+            },
+            method === "GET" ? 8000 : 55000,
+          );
 
     const text = await response.text();
     const responseHeaders = new Headers();
