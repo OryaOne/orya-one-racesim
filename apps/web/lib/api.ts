@@ -8,6 +8,10 @@ function normalizeApiErrorMessage(text: string, status: number): string {
     return "API request failed";
   }
 
+  if (lower.includes("function_invocation_timeout")) {
+    return "The RaceSim proxy timed out before the backend completed. The live request was cut down and retried, but this scenario still exceeded the production budget. Try again or lower runs/detail.";
+  }
+
   if (lower.startsWith("<!doctype html") || lower.startsWith("<html")) {
     if (status === 502) {
       return "The RaceSim backend is temporarily unavailable. Render returned a bad gateway response.";

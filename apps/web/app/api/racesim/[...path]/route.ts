@@ -7,6 +7,11 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 export const preferredRegion = "iad1";
 
+const PRODUCTION_PRIMARY_SIM_TIMEOUT_MS = 14000;
+const PRODUCTION_EMERGENCY_SIM_TIMEOUT_MS = 10000;
+const PRODUCTION_FAILSAFE_SIM_TIMEOUT_MS = 7000;
+const SIMULATION_WAKE_TIMEOUT_MS = 2500;
+
 type LiveSimulationPayload = {
   simulation_runs?: number;
   complexity_level?: "low" | "balanced" | "high";
@@ -169,20 +174,16 @@ async function warmBackendForSimulation(url: string) {
   const healthUrl = url.replace(/\/simulate$/, "/health");
 
   try {
-    const response = await fetchWithTimeout(
+    await fetchWithTimeout(
       healthUrl,
       {
         method: "GET",
         cache: "no-store",
       },
-      8000,
+      SIMULATION_WAKE_TIMEOUT_MS,
     );
-
-    if (!response.ok) {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-    }
   } catch {
-    await new Promise((resolve) => setTimeout(resolve, 1800));
+    // Ignore warm-up failures and proceed with the simulation attempt.
   }
 }
 
@@ -225,7 +226,7 @@ async function forwardSimulationRequest(
   try {
     const primaryResponse = await sendSimulationAttempt(url, headers, {
       body: liveSafeBody,
-      timeoutMs: 26000,
+      timeoutMs: PRODUCTION_PRIMARY_SIM_TIMEOUT_MS,
     });
 
     if (!shouldRetrySimulationResponse(primaryResponse.status)) {
@@ -242,7 +243,7 @@ async function forwardSimulationRequest(
   try {
     const emergencyResponse = await sendSimulationAttempt(url, headers, {
       body: emergencyBody,
-      timeoutMs: 18000,
+      timeoutMs: PRODUCTION_EMERGENCY_SIM_TIMEOUT_MS,
     });
 
     if (!shouldRetrySimulationResponse(emergencyResponse.status)) {
@@ -254,11 +255,9 @@ async function forwardSimulationRequest(
     }
   }
 
-  await warmBackendForSimulation(url);
-
   return sendSimulationAttempt(url, headers, {
     body: failsafeBody,
-    timeoutMs: 14000,
+    timeoutMs: PRODUCTION_FAILSAFE_SIM_TIMEOUT_MS,
   });
 }
 
