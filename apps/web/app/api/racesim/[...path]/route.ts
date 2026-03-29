@@ -183,7 +183,7 @@ function buildSimulationAttemptBody(
       : mode === "emergency"
         ? getEmergencySimulationRuns(payload)
         : risk.veryHeavy
-          ? 30
+          ? 50
           : 60;
 
   const complexityLevel =
