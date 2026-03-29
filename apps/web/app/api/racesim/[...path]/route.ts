@@ -10,8 +10,8 @@ export const preferredRegion = "iad1";
 const PRODUCTION_PRIMARY_SIM_TIMEOUT_MS = 14000;
 const PRODUCTION_EMERGENCY_SIM_TIMEOUT_MS = 10000;
 const PRODUCTION_FAILSAFE_SIM_TIMEOUT_MS = 7000;
-const PRODUCTION_VERY_HEAVY_SIM_TIMEOUT_MS = 25000;
-const SIMULATION_WAKE_TIMEOUT_MS = 2500;
+const PRODUCTION_VERY_HEAVY_SIM_TIMEOUT_MS = 45000;
+const SIMULATION_WAKE_TIMEOUT_MS = 4000;
 
 type LiveSimulationPayload = {
   simulation_runs?: number;
@@ -109,12 +109,6 @@ function getLiveSafeSimulationRuns(payload: LiveSimulationPayload) {
 
   const environment = payload.environment;
   if (environment) {
-    const incidentPressure =
-      (environment.full_safety_cars ?? 0) +
-      (environment.virtual_safety_cars ?? 0) +
-      (environment.red_flags ?? 0) +
-      (environment.late_race_incidents ?? 0);
-
     if (risk.heavyChaos) {
       maxRuns -= 20;
     }
@@ -189,7 +183,7 @@ function buildSimulationAttemptBody(
       : mode === "emergency"
         ? getEmergencySimulationRuns(payload)
         : risk.veryHeavy
-          ? 50
+          ? 30
           : 60;
 
   const complexityLevel =
