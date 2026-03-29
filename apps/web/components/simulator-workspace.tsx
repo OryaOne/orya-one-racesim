@@ -1005,6 +1005,8 @@ function CompareConfigPanel({
   focusDriverId,
   onFocusDriverChange,
   loading,
+  expanded,
+  onToggleExpanded,
 }: {
   scenarioLabel: CompareSide;
   title: string;
@@ -1016,19 +1018,38 @@ function CompareConfigPanel({
   focusDriverId: string;
   onFocusDriverChange: (value: string) => void;
   loading: boolean;
+  expanded: boolean;
+  onToggleExpanded: () => void;
 }) {
   const activePresetId = getActivePresetId(form);
   const focusOverride = getDriverOverride(form, focusDriverId || defaults.drivers[0]?.id || "");
   const compareCap = getCompareSafeRunCap(form);
+  const activeTrack = defaults.grands_prix.find((item) => item.id === form.grand_prix_id) ?? defaults.grands_prix[0];
+  const activeWeather = defaults.weather_presets.find((item) => item.id === form.weather_preset_id) ?? defaults.weather_presets[0];
+  const activeStrategy =
+    defaults.strategy_templates.find((item) => item.id === form.field_strategy_preset)?.name ?? "Balanced / auto";
 
   return (
     <SectionFrame
       eyebrow={`Scenario ${scenarioLabel}`}
       title={title}
-      subtitle="Compact control surface for the scenario under test."
-      action={<Badge variant={scenarioLabel === "A" ? "info" : "default"}>{loading ? "Running" : "Ready"}</Badge>}
+      subtitle={`${activeTrack.name} · ${activeWeather.label} · ${activeStrategy}`}
+      action={
+        <div className="flex items-center gap-2">
+          <Badge variant={scenarioLabel === "A" ? "info" : "default"}>{loading ? "Running" : "Ready"}</Badge>
+          <DisclosureButton expanded={expanded} onToggle={onToggleExpanded} label="controls" />
+        </div>
+      }
     >
       <div className="space-y-3">
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="info">{activeTrack.circuit_name}</Badge>
+          <Badge variant="muted">{activeWeather.label}</Badge>
+          <Badge variant="default">{activeStrategy}</Badge>
+          <Badge variant="warning">{Math.min(form.simulation_runs, compareCap)} runs</Badge>
+          <Badge variant="muted">{form.complexity_level}</Badge>
+        </div>
+
         <label className="flex flex-col gap-2">
           <span className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Scenario title</span>
           <input
@@ -1042,149 +1063,153 @@ function CompareConfigPanel({
           {changedFields.length ? changedFields.slice(0, 6).map((field) => <Badge key={field} variant="info">{field}</Badge>) : <Badge variant="muted">Matched baseline</Badge>}
         </div>
 
-        <div className="grid gap-2.5 md:grid-cols-2">
-          <SelectField
-            label="Preset"
-            value={activePresetId}
-            onChange={(value) =>
-              onFormChange(value === "custom" ? form : applyDemoPreset(defaults, form, value))
-            }
-            options={[
-              { value: "custom", label: "Custom" },
-              ...DEMO_PRESETS.map((preset) => ({ value: preset.id, label: preset.label })),
-            ]}
-          />
-          <SelectField
-            label="Grand Prix"
-            value={form.grand_prix_id}
-            onChange={(value) => onFormChange({ ...form, grand_prix_id: value })}
-            options={defaults.grands_prix.map((item) => ({ value: item.id, label: item.name }))}
-          />
-          <SelectField
-            label="Weather"
-            value={form.weather_preset_id}
-            onChange={(value) => onFormChange({ ...form, weather_preset_id: value })}
-            options={defaults.weather_presets.map((item) => ({ value: item.id, label: item.label }))}
-          />
-          <SelectField
-            label="Field strategy"
-            value={form.field_strategy_preset}
-            onChange={(value) => onFormChange({ ...form, field_strategy_preset: value })}
-            options={[
-              { value: "", label: "Balanced / auto" },
-              ...defaults.strategy_templates.map((item) => ({ value: item.id, label: item.name })),
-            ]}
-          />
-          <label className="flex flex-col gap-2">
-            <span className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Simulation runs</span>
-            <input
-              type="number"
-              min={50}
-              max={500}
-              value={form.simulation_runs}
-              onChange={(event) => onFormChange({ ...form, simulation_runs: Number(event.target.value) })}
-              className="min-h-10 rounded-[10px] border border-white/10 bg-[#090c11] px-3.5 py-2.5 text-sm text-white outline-none transition focus:border-primary/60"
-            />
-            <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">Compare-safe cap {compareCap} runs</span>
-          </label>
-          <SelectField
-            label="Detail"
-            value={form.complexity_level}
-            onChange={(value) => onFormChange({ ...form, complexity_level: value as SimulationFormState["complexity_level"] })}
-            options={[
-              { value: "low", label: "Low detail" },
-              { value: "balanced", label: "Balanced" },
-              { value: "high", label: "High detail" },
-            ]}
-          />
-        </div>
-
-        <div className="rounded-[12px] border border-white/8 bg-black/20 p-3">
-          <div className="mb-2 text-[10px] uppercase tracking-[0.22em] text-cyan-200">Driver assumption</div>
-          <div className="grid gap-2.5 md:grid-cols-3">
-            <SelectField
-              label="Driver"
-              value={focusDriverId}
-              onChange={onFocusDriverChange}
-              options={defaults.drivers.map((driver) => ({ value: driver.id, label: driver.name }))}
-            />
-            <label className="flex flex-col gap-2">
-              <span className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Form delta</span>
-              <input
-                type="number"
-                min={-15}
-                max={15}
-                step={1}
-                value={focusOverride.recent_form_delta}
-                onChange={(event) => onFormChange(patchDriverOverride(form, focusDriverId, { recent_form_delta: Number(event.target.value) }))}
-                className="min-h-10 rounded-[10px] border border-white/10 bg-[#090c11] px-3.5 py-2.5 text-sm text-white outline-none transition focus:border-primary/60"
+        {expanded ? (
+          <>
+            <div className="grid gap-2.5 border-t border-white/8 pt-3 md:grid-cols-2">
+              <SelectField
+                label="Preset"
+                value={activePresetId}
+                onChange={(value) =>
+                  onFormChange(value === "custom" ? form : applyDemoPreset(defaults, form, value))
+                }
+                options={[
+                  { value: "custom", label: "Custom" },
+                  ...DEMO_PRESETS.map((preset) => ({ value: preset.id, label: preset.label })),
+                ]}
               />
-            </label>
-            <label className="flex flex-col gap-2">
-              <span className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Overtake delta</span>
-              <input
-                type="number"
-                min={-15}
-                max={15}
-                step={1}
-                value={focusOverride.overtaking_delta}
-                onChange={(event) => onFormChange(patchDriverOverride(form, focusDriverId, { overtaking_delta: Number(event.target.value) }))}
-                className="min-h-10 rounded-[10px] border border-white/10 bg-[#090c11] px-3.5 py-2.5 text-sm text-white outline-none transition focus:border-primary/60"
+              <SelectField
+                label="Grand Prix"
+                value={form.grand_prix_id}
+                onChange={(value) => onFormChange({ ...form, grand_prix_id: value })}
+                options={defaults.grands_prix.map((item) => ({ value: item.id, label: item.name }))}
               />
-            </label>
-          </div>
-        </div>
+              <SelectField
+                label="Weather"
+                value={form.weather_preset_id}
+                onChange={(value) => onFormChange({ ...form, weather_preset_id: value })}
+                options={defaults.weather_presets.map((item) => ({ value: item.id, label: item.label }))}
+              />
+              <SelectField
+                label="Field strategy"
+                value={form.field_strategy_preset}
+                onChange={(value) => onFormChange({ ...form, field_strategy_preset: value })}
+                options={[
+                  { value: "", label: "Balanced / auto" },
+                  ...defaults.strategy_templates.map((item) => ({ value: item.id, label: item.name })),
+                ]}
+              />
+              <label className="flex flex-col gap-2">
+                <span className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Simulation runs</span>
+                <input
+                  type="number"
+                  min={50}
+                  max={500}
+                  value={form.simulation_runs}
+                  onChange={(event) => onFormChange({ ...form, simulation_runs: Number(event.target.value) })}
+                  className="min-h-10 rounded-[10px] border border-white/10 bg-[#090c11] px-3.5 py-2.5 text-sm text-white outline-none transition focus:border-primary/60"
+                />
+                <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">Compare-safe cap {compareCap} runs</span>
+              </label>
+              <SelectField
+                label="Detail"
+                value={form.complexity_level}
+                onChange={(value) => onFormChange({ ...form, complexity_level: value as SimulationFormState["complexity_level"] })}
+                options={[
+                  { value: "low", label: "Low detail" },
+                  { value: "balanced", label: "Balanced" },
+                  { value: "high", label: "High detail" },
+                ]}
+              />
+            </div>
 
-        <div className="grid gap-2.5 md:grid-cols-2">
-          <SliderField
-            label="Qualifying weight"
-            value={form.weights.qualifying_importance}
-            onChange={(value) => onFormChange({ ...form, weights: { ...form.weights, qualifying_importance: value } })}
-            description="Saturday carry-over and grid leverage."
-          />
-          <SliderField
-            label="Overtake sensitivity"
-            value={form.weights.overtaking_sensitivity}
-            onChange={(value) => onFormChange({ ...form, weights: { ...form.weights, overtaking_sensitivity: value } })}
-            description="How much passing skill matters."
-          />
-          <SliderField
-            label="Energy deployment"
-            value={form.weights.energy_deployment_weight}
-            onChange={(value) => onFormChange({ ...form, weights: { ...form.weights, energy_deployment_weight: value } })}
-            description="Straight-line release and active-aero payoff."
-          />
-          <SliderField
-            label="Pit timing sensitivity"
-            value={form.weights.pit_stop_delta_sensitivity}
-            onChange={(value) => onFormChange({ ...form, weights: { ...form.weights, pit_stop_delta_sensitivity: value } })}
-            description="Extra-stop penalty and bad timing cost."
-          />
-          <SliderField
-            label="Reliability"
-            value={form.weights.reliability_sensitivity}
-            onChange={(value) => onFormChange({ ...form, weights: { ...form.weights, reliability_sensitivity: value } })}
-            description="How hard chaos and attrition bite."
-          />
-          <SliderField
-            label="Rain onset"
-            value={form.environment.rain_onset}
-            onChange={(value) => onFormChange({ ...form, environment: { ...form.environment, rain_onset: value } })}
-            description="Wet crossover probability."
-          />
-          <SliderField
-            label="Volatility"
-            value={form.environment.randomness_intensity}
-            onChange={(value) => onFormChange({ ...form, environment: { ...form.environment, randomness_intensity: value } })}
-            description="Overall race-state randomness."
-          />
-          <SliderField
-            label="SC pressure"
-            value={form.environment.full_safety_cars}
-            onChange={(value) => onFormChange({ ...form, environment: { ...form.environment, full_safety_cars: value } })}
-            description="Neutralization pressure on the strategy model."
-          />
-        </div>
+            <div className="rounded-[12px] border border-white/8 bg-black/20 p-3">
+              <div className="mb-2 text-[10px] uppercase tracking-[0.22em] text-cyan-200">Driver assumption</div>
+              <div className="grid gap-2.5 md:grid-cols-3">
+                <SelectField
+                  label="Driver"
+                  value={focusDriverId}
+                  onChange={onFocusDriverChange}
+                  options={defaults.drivers.map((driver) => ({ value: driver.id, label: driver.name }))}
+                />
+                <label className="flex flex-col gap-2">
+                  <span className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Form delta</span>
+                  <input
+                    type="number"
+                    min={-15}
+                    max={15}
+                    step={1}
+                    value={focusOverride.recent_form_delta}
+                    onChange={(event) => onFormChange(patchDriverOverride(form, focusDriverId, { recent_form_delta: Number(event.target.value) }))}
+                    className="min-h-10 rounded-[10px] border border-white/10 bg-[#090c11] px-3.5 py-2.5 text-sm text-white outline-none transition focus:border-primary/60"
+                  />
+                </label>
+                <label className="flex flex-col gap-2">
+                  <span className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Overtake delta</span>
+                  <input
+                    type="number"
+                    min={-15}
+                    max={15}
+                    step={1}
+                    value={focusOverride.overtaking_delta}
+                    onChange={(event) => onFormChange(patchDriverOverride(form, focusDriverId, { overtaking_delta: Number(event.target.value) }))}
+                    className="min-h-10 rounded-[10px] border border-white/10 bg-[#090c11] px-3.5 py-2.5 text-sm text-white outline-none transition focus:border-primary/60"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="grid gap-2.5 md:grid-cols-2">
+              <SliderField
+                label="Qualifying weight"
+                value={form.weights.qualifying_importance}
+                onChange={(value) => onFormChange({ ...form, weights: { ...form.weights, qualifying_importance: value } })}
+                description="Saturday carry-over and grid leverage."
+              />
+              <SliderField
+                label="Overtake sensitivity"
+                value={form.weights.overtaking_sensitivity}
+                onChange={(value) => onFormChange({ ...form, weights: { ...form.weights, overtaking_sensitivity: value } })}
+                description="How much passing skill matters."
+              />
+              <SliderField
+                label="Energy deployment"
+                value={form.weights.energy_deployment_weight}
+                onChange={(value) => onFormChange({ ...form, weights: { ...form.weights, energy_deployment_weight: value } })}
+                description="Straight-line release and active-aero payoff."
+              />
+              <SliderField
+                label="Pit timing sensitivity"
+                value={form.weights.pit_stop_delta_sensitivity}
+                onChange={(value) => onFormChange({ ...form, weights: { ...form.weights, pit_stop_delta_sensitivity: value } })}
+                description="Extra-stop penalty and bad timing cost."
+              />
+              <SliderField
+                label="Reliability"
+                value={form.weights.reliability_sensitivity}
+                onChange={(value) => onFormChange({ ...form, weights: { ...form.weights, reliability_sensitivity: value } })}
+                description="How hard chaos and attrition bite."
+              />
+              <SliderField
+                label="Rain onset"
+                value={form.environment.rain_onset}
+                onChange={(value) => onFormChange({ ...form, environment: { ...form.environment, rain_onset: value } })}
+                description="Wet crossover probability."
+              />
+              <SliderField
+                label="Volatility"
+                value={form.environment.randomness_intensity}
+                onChange={(value) => onFormChange({ ...form, environment: { ...form.environment, randomness_intensity: value } })}
+                description="Overall race-state randomness."
+              />
+              <SliderField
+                label="SC pressure"
+                value={form.environment.full_safety_cars}
+                onChange={(value) => onFormChange({ ...form, environment: { ...form.environment, full_safety_cars: value } })}
+                description="Neutralization pressure on the strategy model."
+              />
+            </div>
+          </>
+        ) : null}
       </div>
     </SectionFrame>
   );
@@ -1455,6 +1480,8 @@ export function SimulatorWorkspace() {
   const [compareError, setCompareError] = useState<string | null>(null);
   const [compareLoading, setCompareLoading] = useState<CompareSide | "both" | null>(null);
   const [showCompareDetail, setShowCompareDetail] = useState(false);
+  const [showCompareConfigA, setShowCompareConfigA] = useState(false);
+  const [showCompareConfigB, setShowCompareConfigB] = useState(false);
   const [analyticsView, setAnalyticsView] = useState<"order" | "strategy" | "diagnostics">("order");
   const [controlTab, setControlTab] = useState<ControlSectionId>("weekend");
   const [showPresetDetail, setShowPresetDetail] = useState(false);
@@ -1993,41 +2020,6 @@ export function SimulatorWorkspace() {
       {workspaceMode === "compare" && compareFormA && compareFormB ? (
         <div className="space-y-3">
           <motion.section {...motionProps}>
-            <div className="grid gap-3 xl:grid-cols-2">
-              <CompareConfigPanel
-                scenarioLabel="A"
-                title={compareTitleA}
-                onTitleChange={setCompareTitleA}
-                defaults={defaults}
-                form={compareFormA}
-                onFormChange={(value) => {
-                  setCompareFormA(value);
-                  setCompareSimulationA(null);
-                }}
-                changedFields={compareChangedFields}
-                focusDriverId={compareFocusDriverA || defaults.drivers[0]?.id || ""}
-                onFocusDriverChange={setCompareFocusDriverA}
-                loading={compareLoading === "A" || compareLoading === "both"}
-              />
-              <CompareConfigPanel
-                scenarioLabel="B"
-                title={compareTitleB}
-                onTitleChange={setCompareTitleB}
-                defaults={defaults}
-                form={compareFormB}
-                onFormChange={(value) => {
-                  setCompareFormB(value);
-                  setCompareSimulationB(null);
-                }}
-                changedFields={compareChangedFields}
-                focusDriverId={compareFocusDriverB || defaults.drivers[1]?.id || defaults.drivers[0]?.id || ""}
-                onFocusDriverChange={setCompareFocusDriverB}
-                loading={compareLoading === "B" || compareLoading === "both"}
-              />
-            </div>
-          </motion.section>
-
-          <motion.section {...motionProps}>
             <SectionFrame
               eyebrow="Comparison board"
               title="Scenario delta view"
@@ -2241,6 +2233,52 @@ export function SimulatorWorkspace() {
                   </div>
                 </div>
               )}
+            </SectionFrame>
+          </motion.section>
+
+          <motion.section {...motionProps}>
+            <SectionFrame
+              eyebrow="Scenario setup"
+              title="A / B control surfaces"
+              subtitle="Compact scenario summaries first. Open controls only when you need to change the underlying assumptions."
+              action={<Badge variant="muted">Config below analysis</Badge>}
+            >
+              <div className="grid gap-3 xl:grid-cols-2">
+                <CompareConfigPanel
+                  scenarioLabel="A"
+                  title={compareTitleA}
+                  onTitleChange={setCompareTitleA}
+                  defaults={defaults}
+                  form={compareFormA}
+                  onFormChange={(value) => {
+                    setCompareFormA(value);
+                    setCompareSimulationA(null);
+                  }}
+                  changedFields={compareChangedFields}
+                  focusDriverId={compareFocusDriverA || defaults.drivers[0]?.id || ""}
+                  onFocusDriverChange={setCompareFocusDriverA}
+                  loading={compareLoading === "A" || compareLoading === "both"}
+                  expanded={showCompareConfigA}
+                  onToggleExpanded={() => setShowCompareConfigA((value) => !value)}
+                />
+                <CompareConfigPanel
+                  scenarioLabel="B"
+                  title={compareTitleB}
+                  onTitleChange={setCompareTitleB}
+                  defaults={defaults}
+                  form={compareFormB}
+                  onFormChange={(value) => {
+                    setCompareFormB(value);
+                    setCompareSimulationB(null);
+                  }}
+                  changedFields={compareChangedFields}
+                  focusDriverId={compareFocusDriverB || defaults.drivers[1]?.id || defaults.drivers[0]?.id || ""}
+                  onFocusDriverChange={setCompareFocusDriverB}
+                  loading={compareLoading === "B" || compareLoading === "both"}
+                  expanded={showCompareConfigB}
+                  onToggleExpanded={() => setShowCompareConfigB((value) => !value)}
+                />
+              </div>
             </SectionFrame>
           </motion.section>
         </div>
