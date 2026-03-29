@@ -723,6 +723,222 @@ function AnalyticsTabs({
 }
 
 type ControlSectionId = "weekend" | "conditions" | "strategy" | "drivers" | "simulation";
+type WorkspaceMode = "single" | "compare";
+type CompareSide = "A" | "B";
+
+function cloneFormState(form: SimulationFormState) {
+  return JSON.parse(JSON.stringify(form)) as SimulationFormState;
+}
+
+function getCompareSafeRunCap(form: SimulationFormState) {
+  const heavyWeather = /(rain|crossover|storm|mixed|wet)/i.test(form.weather_preset_id);
+  const heavyCircuit = ["belgian-grand-prix", "singapore-grand-prix", "azerbaijan-grand-prix", "las-vegas-grand-prix"].includes(
+    form.grand_prix_id,
+  );
+
+  let cap = form.complexity_level === "high" ? 90 : 120;
+  if (heavyWeather) {
+    cap -= 20;
+  }
+  if (heavyCircuit) {
+    cap -= 10;
+  }
+
+  return Math.max(60, cap);
+}
+
+function buildCompareSafeForm(form: SimulationFormState) {
+  const next = cloneFormState(form);
+  next.simulation_runs = Math.min(next.simulation_runs, getCompareSafeRunCap(form));
+  return next;
+}
+
+function getDriverOverride(form: SimulationFormState, driverId: string) {
+  return (
+    form.driver_overrides.find((item) => item.driver_id === driverId) ?? {
+      driver_id: driverId,
+      recent_form_delta: 0,
+      qualifying_delta: 0,
+      tire_management_delta: 0,
+      overtaking_delta: 0,
+      consistency_delta: 0,
+      aggression_delta: 0,
+    }
+  );
+}
+
+function patchDriverOverride(
+  form: SimulationFormState,
+  driverId: string,
+  patch: Partial<DriverOverride>,
+) {
+  return {
+    ...form,
+    driver_overrides: form.driver_overrides.map((item) =>
+      item.driver_id === driverId ? { ...item, ...patch } : item,
+    ),
+  };
+}
+
+function compareBadgeVariant(delta: number, higherIsBetter = true): "success" | "warning" | "default" | "info" | "muted" {
+  if (Math.abs(delta) < 0.02) {
+    return "muted";
+  }
+  if (higherIsBetter) {
+    return delta > 0 ? "success" : "warning";
+  }
+  return delta < 0 ? "success" : "warning";
+}
+
+function compareDeltaText(delta: number, suffix = "", digits = 1) {
+  if (Math.abs(delta) < 0.05) {
+    return "No material change";
+  }
+  const formatted = `${delta > 0 ? "+" : ""}${delta.toFixed(digits)}${suffix}`;
+  return formatted;
+}
+
+function getActivePresetId(form: SimulationFormState) {
+  const active = DEMO_PRESETS.find(
+    (preset) =>
+      preset.grand_prix_id === form.grand_prix_id &&
+      preset.weather_preset_id === form.weather_preset_id &&
+      preset.field_strategy_preset === form.field_strategy_preset &&
+      preset.complexity_level === form.complexity_level &&
+      preset.simulation_runs === form.simulation_runs,
+  );
+  return active?.id ?? "custom";
+}
+
+function getChangedFieldSummary(
+  defaults: DefaultsPayload,
+  formA: SimulationFormState,
+  formB: SimulationFormState,
+) {
+  const changed: string[] = [];
+
+  if (formA.grand_prix_id !== formB.grand_prix_id) {
+    changed.push("Grand Prix");
+  }
+  if (formA.weather_preset_id !== formB.weather_preset_id) {
+    changed.push("Weather mode");
+  }
+  if (formA.field_strategy_preset !== formB.field_strategy_preset) {
+    changed.push("Field strategy");
+  }
+  if (formA.complexity_level !== formB.complexity_level) {
+    changed.push("Simulation detail");
+  }
+  if (formA.simulation_runs !== formB.simulation_runs) {
+    changed.push("Run count");
+  }
+  if (Math.abs(formA.weights.qualifying_importance - formB.weights.qualifying_importance) >= 0.04) {
+    changed.push("Qualifying weight");
+  }
+  if (Math.abs(formA.weights.overtaking_sensitivity - formB.weights.overtaking_sensitivity) >= 0.04) {
+    changed.push("Overtaking sensitivity");
+  }
+  if (Math.abs(formA.weights.energy_deployment_weight - formB.weights.energy_deployment_weight) >= 0.04) {
+    changed.push("Energy deployment");
+  }
+  if (Math.abs(formA.weights.pit_stop_delta_sensitivity - formB.weights.pit_stop_delta_sensitivity) >= 0.04) {
+    changed.push("Pit timing sensitivity");
+  }
+  if (Math.abs(formA.weights.reliability_sensitivity - formB.weights.reliability_sensitivity) >= 0.04) {
+    changed.push("Reliability");
+  }
+  if (Math.abs(formA.environment.rain_onset - formB.environment.rain_onset) >= 0.05) {
+    changed.push("Rain onset");
+  }
+  if (Math.abs(formA.environment.randomness_intensity - formB.environment.randomness_intensity) >= 0.05) {
+    changed.push("Volatility");
+  }
+  if (Math.abs(formA.environment.full_safety_cars - formB.environment.full_safety_cars) >= 0.05) {
+    changed.push("SC pressure");
+  }
+
+  const driverOverrideChanged = defaults.drivers.some((driver) => {
+    const overrideA = getDriverOverride(formA, driver.id);
+    const overrideB = getDriverOverride(formB, driver.id);
+    return (
+      overrideA.recent_form_delta !== overrideB.recent_form_delta ||
+      overrideA.overtaking_delta !== overrideB.overtaking_delta ||
+      overrideA.qualifying_delta !== overrideB.qualifying_delta
+    );
+  });
+
+  if (driverOverrideChanged) {
+    changed.push("Driver assumptions");
+  }
+
+  return changed;
+}
+
+function buildCompareInsights(
+  formA: SimulationFormState,
+  formB: SimulationFormState,
+  resultA: SimulationResponse | null,
+  resultB: SimulationResponse | null,
+  defaults: DefaultsPayload,
+) {
+  const insights: string[] = [];
+  const trackA = defaults.grands_prix.find((item) => item.id === formA.grand_prix_id);
+  const trackB = defaults.grands_prix.find((item) => item.id === formB.grand_prix_id);
+
+  if (resultA && resultB) {
+    const leadA = resultA.drivers[0];
+    const leadB = resultB.drivers[0];
+    if (leadA && leadB && leadA.driver_id !== leadB.driver_id) {
+      insights.push(`${leadA.driver_name} leads Scenario A while ${leadB.driver_name} leads Scenario B.`);
+    }
+
+    const moveDelta =
+      resultB.event_summary.movement_summary.avg_overtakes_per_simulation -
+      resultA.event_summary.movement_summary.avg_overtakes_per_simulation;
+    if (Math.abs(moveDelta) >= 0.2) {
+      insights.push(
+        `${moveDelta > 0 ? "More" : "Fewer"} overtakes expected in Scenario ${moveDelta > 0 ? "B" : "A"}.`,
+      );
+    }
+
+    const stopDelta =
+      (resultB.event_summary.strategy_diagnostics.avg_first_stop_lap ?? 0) -
+      (resultA.event_summary.strategy_diagnostics.avg_first_stop_lap ?? 0);
+    if (Math.abs(stopDelta) >= 1.5) {
+      insights.push(`Earlier first stop in Scenario ${stopDelta > 0 ? "A" : "B"}.`);
+    }
+
+    const scDelta =
+      resultB.event_summary.event_timing.safety_car_leverage_score -
+      resultA.event_summary.event_timing.safety_car_leverage_score;
+    if (Math.abs(scDelta) >= 0.08) {
+      insights.push(`Greater SC leverage in Scenario ${scDelta > 0 ? "B" : "A"}.`);
+    }
+
+    const volatilityDelta =
+      resultB.event_summary.volatility_index - resultA.event_summary.volatility_index;
+    if (Math.abs(volatilityDelta) >= 0.06) {
+      insights.push(
+        `${volatilityDelta > 0 ? "Higher" : "Lower"} confidence stability in Scenario ${volatilityDelta > 0 ? "B" : "A"} due to race volatility.`,
+      );
+    }
+  }
+
+  if (trackA && trackB && trackA.id !== trackB.id) {
+    const trackPosDelta = trackB.track_position_importance - trackA.track_position_importance;
+    if (Math.abs(trackPosDelta) >= 0.08) {
+      insights.push(
+        `${trackPosDelta > 0 ? trackB.name : trackA.name} preserves grid order more strongly through track-position pressure.`,
+      );
+    }
+  }
+
+  if (formA.weather_preset_id !== formB.weather_preset_id || Math.abs(formA.environment.rain_onset - formB.environment.rain_onset) >= 0.08) {
+    insights.push(`Weather crossover pressure is materially different between the two scenarios.`);
+  }
+
+  return insights.slice(0, 5);
+}
 
 function ControlRailNav({
   value,
@@ -774,6 +990,239 @@ function ControlRailNav({
           </button>
         );
       })}
+    </div>
+  );
+}
+
+function CompareConfigPanel({
+  scenarioLabel,
+  title,
+  onTitleChange,
+  defaults,
+  form,
+  onFormChange,
+  changedFields,
+  focusDriverId,
+  onFocusDriverChange,
+  loading,
+}: {
+  scenarioLabel: CompareSide;
+  title: string;
+  onTitleChange: (value: string) => void;
+  defaults: DefaultsPayload;
+  form: SimulationFormState;
+  onFormChange: (value: SimulationFormState) => void;
+  changedFields: string[];
+  focusDriverId: string;
+  onFocusDriverChange: (value: string) => void;
+  loading: boolean;
+}) {
+  const activePresetId = getActivePresetId(form);
+  const focusOverride = getDriverOverride(form, focusDriverId || defaults.drivers[0]?.id || "");
+  const compareCap = getCompareSafeRunCap(form);
+
+  return (
+    <SectionFrame
+      eyebrow={`Scenario ${scenarioLabel}`}
+      title={title}
+      subtitle="Compact control surface for the scenario under test."
+      action={<Badge variant={scenarioLabel === "A" ? "info" : "default"}>{loading ? "Running" : "Ready"}</Badge>}
+    >
+      <div className="space-y-3">
+        <label className="flex flex-col gap-2">
+          <span className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Scenario title</span>
+          <input
+            value={title}
+            onChange={(event) => onTitleChange(event.target.value)}
+            className="min-h-10 rounded-[10px] border border-white/10 bg-[#090c11] px-3.5 py-2.5 text-sm text-white outline-none transition focus:border-primary/60"
+          />
+        </label>
+
+        <div className="flex flex-wrap gap-2">
+          {changedFields.length ? changedFields.slice(0, 6).map((field) => <Badge key={field} variant="info">{field}</Badge>) : <Badge variant="muted">Matched baseline</Badge>}
+        </div>
+
+        <div className="grid gap-2.5 md:grid-cols-2">
+          <SelectField
+            label="Preset"
+            value={activePresetId}
+            onChange={(value) =>
+              onFormChange(value === "custom" ? form : applyDemoPreset(defaults, form, value))
+            }
+            options={[
+              { value: "custom", label: "Custom" },
+              ...DEMO_PRESETS.map((preset) => ({ value: preset.id, label: preset.label })),
+            ]}
+          />
+          <SelectField
+            label="Grand Prix"
+            value={form.grand_prix_id}
+            onChange={(value) => onFormChange({ ...form, grand_prix_id: value })}
+            options={defaults.grands_prix.map((item) => ({ value: item.id, label: item.name }))}
+          />
+          <SelectField
+            label="Weather"
+            value={form.weather_preset_id}
+            onChange={(value) => onFormChange({ ...form, weather_preset_id: value })}
+            options={defaults.weather_presets.map((item) => ({ value: item.id, label: item.label }))}
+          />
+          <SelectField
+            label="Field strategy"
+            value={form.field_strategy_preset}
+            onChange={(value) => onFormChange({ ...form, field_strategy_preset: value })}
+            options={[
+              { value: "", label: "Balanced / auto" },
+              ...defaults.strategy_templates.map((item) => ({ value: item.id, label: item.name })),
+            ]}
+          />
+          <label className="flex flex-col gap-2">
+            <span className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Simulation runs</span>
+            <input
+              type="number"
+              min={50}
+              max={500}
+              value={form.simulation_runs}
+              onChange={(event) => onFormChange({ ...form, simulation_runs: Number(event.target.value) })}
+              className="min-h-10 rounded-[10px] border border-white/10 bg-[#090c11] px-3.5 py-2.5 text-sm text-white outline-none transition focus:border-primary/60"
+            />
+            <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">Compare-safe cap {compareCap} runs</span>
+          </label>
+          <SelectField
+            label="Detail"
+            value={form.complexity_level}
+            onChange={(value) => onFormChange({ ...form, complexity_level: value as SimulationFormState["complexity_level"] })}
+            options={[
+              { value: "low", label: "Low detail" },
+              { value: "balanced", label: "Balanced" },
+              { value: "high", label: "High detail" },
+            ]}
+          />
+        </div>
+
+        <div className="rounded-[12px] border border-white/8 bg-black/20 p-3">
+          <div className="mb-2 text-[10px] uppercase tracking-[0.22em] text-cyan-200">Driver assumption</div>
+          <div className="grid gap-2.5 md:grid-cols-3">
+            <SelectField
+              label="Driver"
+              value={focusDriverId}
+              onChange={onFocusDriverChange}
+              options={defaults.drivers.map((driver) => ({ value: driver.id, label: driver.name }))}
+            />
+            <label className="flex flex-col gap-2">
+              <span className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Form delta</span>
+              <input
+                type="number"
+                min={-15}
+                max={15}
+                step={1}
+                value={focusOverride.recent_form_delta}
+                onChange={(event) => onFormChange(patchDriverOverride(form, focusDriverId, { recent_form_delta: Number(event.target.value) }))}
+                className="min-h-10 rounded-[10px] border border-white/10 bg-[#090c11] px-3.5 py-2.5 text-sm text-white outline-none transition focus:border-primary/60"
+              />
+            </label>
+            <label className="flex flex-col gap-2">
+              <span className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">Overtake delta</span>
+              <input
+                type="number"
+                min={-15}
+                max={15}
+                step={1}
+                value={focusOverride.overtaking_delta}
+                onChange={(event) => onFormChange(patchDriverOverride(form, focusDriverId, { overtaking_delta: Number(event.target.value) }))}
+                className="min-h-10 rounded-[10px] border border-white/10 bg-[#090c11] px-3.5 py-2.5 text-sm text-white outline-none transition focus:border-primary/60"
+              />
+            </label>
+          </div>
+        </div>
+
+        <div className="grid gap-2.5 md:grid-cols-2">
+          <SliderField
+            label="Qualifying weight"
+            value={form.weights.qualifying_importance}
+            onChange={(value) => onFormChange({ ...form, weights: { ...form.weights, qualifying_importance: value } })}
+            description="Saturday carry-over and grid leverage."
+          />
+          <SliderField
+            label="Overtake sensitivity"
+            value={form.weights.overtaking_sensitivity}
+            onChange={(value) => onFormChange({ ...form, weights: { ...form.weights, overtaking_sensitivity: value } })}
+            description="How much passing skill matters."
+          />
+          <SliderField
+            label="Energy deployment"
+            value={form.weights.energy_deployment_weight}
+            onChange={(value) => onFormChange({ ...form, weights: { ...form.weights, energy_deployment_weight: value } })}
+            description="Straight-line release and active-aero payoff."
+          />
+          <SliderField
+            label="Pit timing sensitivity"
+            value={form.weights.pit_stop_delta_sensitivity}
+            onChange={(value) => onFormChange({ ...form, weights: { ...form.weights, pit_stop_delta_sensitivity: value } })}
+            description="Extra-stop penalty and bad timing cost."
+          />
+          <SliderField
+            label="Reliability"
+            value={form.weights.reliability_sensitivity}
+            onChange={(value) => onFormChange({ ...form, weights: { ...form.weights, reliability_sensitivity: value } })}
+            description="How hard chaos and attrition bite."
+          />
+          <SliderField
+            label="Rain onset"
+            value={form.environment.rain_onset}
+            onChange={(value) => onFormChange({ ...form, environment: { ...form.environment, rain_onset: value } })}
+            description="Wet crossover probability."
+          />
+          <SliderField
+            label="Volatility"
+            value={form.environment.randomness_intensity}
+            onChange={(value) => onFormChange({ ...form, environment: { ...form.environment, randomness_intensity: value } })}
+            description="Overall race-state randomness."
+          />
+          <SliderField
+            label="SC pressure"
+            value={form.environment.full_safety_cars}
+            onChange={(value) => onFormChange({ ...form, environment: { ...form.environment, full_safety_cars: value } })}
+            description="Neutralization pressure on the strategy model."
+          />
+        </div>
+      </div>
+    </SectionFrame>
+  );
+}
+
+function CompareMetricCard({
+  label,
+  scenarioA,
+  scenarioB,
+  delta,
+  deltaTone = "info",
+  detail,
+}: {
+  label: string;
+  scenarioA: string;
+  scenarioB: string;
+  delta: string;
+  deltaTone?: "default" | "muted" | "success" | "warning" | "info";
+  detail: string;
+}) {
+  return (
+    <div className="rounded-[12px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.012))] p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">{label}</div>
+        <Badge variant={deltaTone}>{delta}</Badge>
+      </div>
+      <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+        <div>
+          <div className="text-[9px] uppercase tracking-[0.18em] text-cyan-200">Scenario A</div>
+          <div className="mt-1 text-sm text-white">{scenarioA}</div>
+        </div>
+        <div className="text-muted-foreground">→</div>
+        <div className="text-right">
+          <div className="text-[9px] uppercase tracking-[0.18em] text-primary/90">Scenario B</div>
+          <div className="mt-1 text-sm text-white">{scenarioB}</div>
+        </div>
+      </div>
+      <div className="mt-2 text-[11px] leading-5 text-muted-foreground">{detail}</div>
     </div>
   );
 }
@@ -991,9 +1440,21 @@ function DriverTable({ drivers }: { drivers: DriverResult[] }) {
 
 export function SimulatorWorkspace() {
   const [defaults, setDefaults] = useState<DefaultsPayload | null>(null);
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>("single");
   const [form, setForm] = useState<SimulationFormState | null>(null);
   const [simulation, setSimulation] = useState<SimulationResponse | null>(null);
   const [suggestions, setSuggestions] = useState<StrategySuggestion[]>([]);
+  const [compareFormA, setCompareFormA] = useState<SimulationFormState | null>(null);
+  const [compareFormB, setCompareFormB] = useState<SimulationFormState | null>(null);
+  const [compareSimulationA, setCompareSimulationA] = useState<SimulationResponse | null>(null);
+  const [compareSimulationB, setCompareSimulationB] = useState<SimulationResponse | null>(null);
+  const [compareTitleA, setCompareTitleA] = useState("Scenario A");
+  const [compareTitleB, setCompareTitleB] = useState("Scenario B");
+  const [compareFocusDriverA, setCompareFocusDriverA] = useState("");
+  const [compareFocusDriverB, setCompareFocusDriverB] = useState("");
+  const [compareError, setCompareError] = useState<string | null>(null);
+  const [compareLoading, setCompareLoading] = useState<CompareSide | "both" | null>(null);
+  const [showCompareDetail, setShowCompareDetail] = useState(false);
   const [analyticsView, setAnalyticsView] = useState<"order" | "strategy" | "diagnostics">("order");
   const [controlTab, setControlTab] = useState<ControlSectionId>("weekend");
   const [showPresetDetail, setShowPresetDetail] = useState(false);
@@ -1015,6 +1476,10 @@ export function SimulatorWorkspace() {
         const initialForm = buildInitialForm(payload);
         setDefaults(payload);
         setForm(initialForm);
+        setCompareFormA(buildCompareSafeForm(initialForm));
+        setCompareFormB(buildCompareSafeForm(initialForm));
+        setCompareFocusDriverA(payload.drivers[0]?.id ?? "");
+        setCompareFocusDriverB(payload.drivers[1]?.id ?? payload.drivers[0]?.id ?? "");
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : "Failed to reach the API.");
       } finally {
@@ -1089,6 +1554,58 @@ export function SimulatorWorkspace() {
       setError(requestError instanceof Error ? requestError.message : "Simulation request failed.");
     } finally {
       setLoadingSimulation(false);
+    }
+  }
+
+  function duplicateCurrentIntoCompare() {
+    if (!form || !defaults) {
+      return;
+    }
+    const nextA = buildCompareSafeForm(form);
+    const nextB = buildCompareSafeForm(form);
+    setCompareFormA(nextA);
+    setCompareFormB(nextB);
+    setCompareSimulationA(null);
+    setCompareSimulationB(null);
+    setCompareTitleA("Scenario A");
+    setCompareTitleB("Scenario B");
+    setCompareFocusDriverA(compareFocusDriverA || defaults.drivers[0]?.id || "");
+    setCompareFocusDriverB(compareFocusDriverB || defaults.drivers[1]?.id || defaults.drivers[0]?.id || "");
+    setCompareError(null);
+  }
+
+  async function executeCompareSimulation(side: CompareSide, activeForm: SimulationFormState) {
+    if (!defaults) {
+      return null;
+    }
+
+    const safeForm = buildCompareSafeForm(activeForm);
+    const response = await runSimulation<SimulationResponse>(safeForm);
+    if (hasUnknownDriverIds(defaults, response.drivers)) {
+      throw new Error("The backend is still on the old fictional grid. Redeploy the API before running 2026 race simulations.");
+    }
+    if (side === "A") {
+      setCompareSimulationA(response);
+    } else {
+      setCompareSimulationB(response);
+    }
+    return response;
+  }
+
+  async function runCompareScenarios() {
+    if (!compareFormA || !compareFormB || !defaults) {
+      return;
+    }
+
+    setCompareLoading("both");
+    setCompareError(null);
+    try {
+      await executeCompareSimulation("A", compareFormA);
+      await executeCompareSimulation("B", compareFormB);
+    } catch (requestError) {
+      setCompareError(requestError instanceof Error ? requestError.message : "Compare run failed.");
+    } finally {
+      setCompareLoading(null);
     }
   }
 
@@ -1189,6 +1706,49 @@ export function SimulatorWorkspace() {
   );
 
   const leaderDiagnostics = leadDriver?.diagnostics ?? null;
+  const compareChangedFields =
+    compareFormA && compareFormB ? getChangedFieldSummary(defaults, compareFormA, compareFormB) : [];
+  const compareTrackA =
+    compareFormA ? defaults.grands_prix.find((item) => item.id === compareFormA.grand_prix_id) ?? defaults.grands_prix[0] : null;
+  const compareTrackB =
+    compareFormB ? defaults.grands_prix.find((item) => item.id === compareFormB.grand_prix_id) ?? defaults.grands_prix[0] : null;
+  const compareWeatherA =
+    compareFormA ? defaults.weather_presets.find((item) => item.id === compareFormA.weather_preset_id) ?? defaults.weather_presets[0] : null;
+  const compareWeatherB =
+    compareFormB ? defaults.weather_presets.find((item) => item.id === compareFormB.weather_preset_id) ?? defaults.weather_presets[0] : null;
+  const compareLeadA = compareSimulationA?.drivers[0] ?? null;
+  const compareLeadB = compareSimulationB?.drivers[0] ?? null;
+  const compareTopA = compareSimulationA?.drivers.slice(0, 4) ?? [];
+  const compareTopB = compareSimulationB?.drivers.slice(0, 4) ?? [];
+  const compareInsights =
+    compareFormA && compareFormB
+      ? buildCompareInsights(compareFormA, compareFormB, compareSimulationA, compareSimulationB, defaults)
+      : [];
+  const compareMovementDelta =
+    (compareSimulationB?.event_summary.movement_summary.avg_overtakes_per_simulation ?? 0) -
+    (compareSimulationA?.event_summary.movement_summary.avg_overtakes_per_simulation ?? 0);
+  const comparePointsDelta = (compareLeadB?.expected_points ?? 0) - (compareLeadA?.expected_points ?? 0);
+  const compareWinDelta = (compareLeadB?.win_probability ?? 0) - (compareLeadA?.win_probability ?? 0);
+  const comparePodiumDelta = (compareLeadB?.podium_probability ?? 0) - (compareLeadA?.podium_probability ?? 0);
+  const compareStopDelta =
+    (compareSimulationB?.event_summary.strategy_diagnostics.avg_first_stop_lap ?? 0) -
+    (compareSimulationA?.event_summary.strategy_diagnostics.avg_first_stop_lap ?? 0);
+  const compareVolatilityDelta =
+    (compareSimulationB?.event_summary.volatility_index ?? 0) -
+    (compareSimulationA?.event_summary.volatility_index ?? 0);
+  const compareScDelta =
+    (compareSimulationB?.event_summary.event_timing.safety_car_leverage_score ?? 0) -
+    (compareSimulationA?.event_summary.event_timing.safety_car_leverage_score ?? 0);
+  const comparePhaseRows = ["opening", "first-stop", "transition", "closing"].map((phaseId) => {
+    const phaseA = compareSimulationA?.event_summary.race_phases.find((phase) => phase.phase_id === phaseId);
+    const phaseB = compareSimulationB?.event_summary.race_phases.find((phase) => phase.phase_id === phaseId);
+    return {
+      phaseId,
+      label: phaseA?.label ?? phaseB?.label ?? phaseId,
+      phaseA,
+      phaseB,
+    };
+  });
   const motionProps = reduceMotion
     ? { initial: false, animate: undefined, transition: { duration: 0 } }
     : {
@@ -1202,112 +1762,489 @@ export function SimulatorWorkspace() {
       <motion.section {...motionProps} className="sticky top-[5.25rem] z-20">
         <Card className="overflow-hidden rounded-[16px] border-primary/15 bg-[linear-gradient(120deg,rgba(13,15,20,1),rgba(8,10,13,1))] shadow-[0_24px_70px_rgba(0,0,0,0.34)]">
           <CardContent className="p-3.5">
-            <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge>Grand Prix</Badge>
-                  <StatusChip label="Preset" value={activePreset} variant={activePreset === "Custom" ? "muted" : "default"} />
-                  <StatusChip label="Weather" value={activeWeather.label} variant="info" />
-                  {activeTrack.sprint_weekend ? <StatusChip label="Weekend" value="Sprint" variant="warning" /> : null}
-                  <StatusChip label="Volatility" value={volatilityLabel(currentVolatility)} variant={signalVariant(currentVolatility)} />
-                  <StatusChip
-                    label="Sim"
-                    value={loadingSimulation ? "Running" : deferredSimulation ? "Loaded" : "Ready"}
-                    variant={loadingSimulation ? "warning" : deferredSimulation ? "success" : "muted"}
-                  />
-                </div>
-                <h2 className="mt-2.5 font-display text-[clamp(1.7rem,3vw,2.7rem)] leading-[0.98] tracking-[-0.05em] text-white">
-                  {activeTrack.name}
-                </h2>
-                <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                  <span>{activeTrack.circuit_name}</span>
-                  <span>R{activeTrack.calendar_round}</span>
-                  <span>{form.simulation_runs} runs</span>
-                  <span>{form.complexity_level} detail</span>
-                </div>
-                <div className="mt-2.5 flex flex-wrap gap-2">
-                  <StatusChip label="Deg" value={activeTrack.degradation_profile} variant={telemetryVariant(activeTrack.tire_stress)} />
-                  <StatusChip label="Track pos" value={`${Math.round(activeTrack.track_position_importance * 100)}`} variant="info" />
-                  <StatusChip label="Energy" value={`${Math.round(activeTrack.energy_sensitivity * 100)}`} variant="default" />
-                  <StatusChip label="SC / VSC" value={`${Math.round((activeTrack.safety_car_risk + form.environment.full_safety_cars) * 50)}`} variant="warning" />
-                </div>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3 border-b border-white/8 pb-3">
+              <div className="inline-flex rounded-[12px] border border-white/8 bg-black/25 p-1">
+                <button
+                  type="button"
+                  onClick={() => setWorkspaceMode("single")}
+                  className={`rounded-[10px] px-3 py-2 text-[10px] uppercase tracking-[0.22em] transition ${
+                    workspaceMode === "single" ? "bg-primary text-white shadow-[0_0_18px_rgba(225,41,68,0.25)]" : "text-muted-foreground hover:text-white"
+                  }`}
+                >
+                  Single scenario
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    duplicateCurrentIntoCompare();
+                    setWorkspaceMode("compare");
+                  }}
+                  className={`rounded-[10px] px-3 py-2 text-[10px] uppercase tracking-[0.22em] transition ${
+                    workspaceMode === "compare" ? "bg-primary text-white shadow-[0_0_18px_rgba(225,41,68,0.25)]" : "text-muted-foreground hover:text-white"
+                  }`}
+                >
+                  Compare mode
+                </button>
               </div>
-
-              <div className="flex w-full flex-col gap-2.5 xl:w-[360px] 2xl:w-[384px]">
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <Button className="w-full justify-center" onClick={() => void executeSimulation()} disabled={loadingSimulation}>
-                    {loadingSimulation ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
-                    Run Grand Prix
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    className="w-full justify-center"
-                    onClick={() => void requestSuggestions()}
-                    disabled={loadingSuggestions}
-                  >
-                    {loadingSuggestions ? <Loader2 className="h-4 w-4 animate-spin" /> : <BarChart3 className="h-4 w-4" />}
-                    Refresh
-                  </Button>
-                </div>
-                <div className="grid gap-2 rounded-[10px] border border-white/8 bg-white/[0.03] px-3 py-2.5 sm:grid-cols-2">
-                  <StatusChip label="Weekend" value={activeWeather.label} variant="info" />
-                  <StatusChip label="Chaos" value={`${Math.round(form.environment.randomness_intensity * 100)}`} variant={signalVariant(form.environment.randomness_intensity)} />
-                  <StatusChip label="Quali" value={`${Math.round(form.weights.qualifying_importance * 100)}`} variant="info" />
-                  <StatusChip label="Track pos" value={`${Math.round(activeTrack.track_position_importance * 100)}`} variant="info" />
-                </div>
-                {error ? <div className="rounded-[10px] border border-rose-300/20 bg-rose-400/10 px-3 py-2 text-[12px] leading-5 text-rose-100">{error}</div> : null}
+              <div className="flex flex-wrap items-center gap-2">
+                {workspaceMode === "compare" ? <Badge variant="info">Decision workflow</Badge> : <Badge>Grand Prix</Badge>}
+                <Badge variant="muted">{workspaceMode === "compare" ? "A / B board" : "Single board"}</Badge>
               </div>
             </div>
 
-            <div className="mt-3 grid gap-2 xl:grid-cols-[1.52fr_0.71fr] 2xl:grid-cols-[1.65fr_0.68fr]">
-              <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
-                <HeaderMetric
-                  label="Lead car"
-                  value={leadDriver ? leadDriver.driver_name : "Pending"}
-                  detail={leadDriver ? `${formatPct(leadDriver.win_probability)} win share` : "Run the current setup"}
-                  tone="default"
-                />
-                <HeaderMetric
-                  label="Podium lane"
-                  value={leadDriver ? formatPct(leadDriver.podium_probability) : "Pending"}
-                  detail={leadDriver ? `${leadDriver.team_name} tops the board` : "Awaiting run"}
-                  tone="success"
-                />
-                <HeaderMetric
-                  label="Points load"
-                  value={leadDriver ? leadDriver.expected_points.toFixed(1) : "Pending"}
-                  detail={leadDriver ? `${formatPct(leadDriver.points_probability)} points chance` : "Awaiting simulation"}
-                  tone="success"
-                />
-                <HeaderMetric
-                  label="Risk channel"
-                  value={deferredSimulation ? deferredSimulation.event_summary.dominant_factor : "Track-led"}
-                  detail={deferredSimulation ? deferredSimulation.scenario.event_outlook : "Track + control settings"}
-                  tone="warning"
-                />
-              </div>
-              <div className="rounded-[10px] border border-white/8 bg-black/25 p-2">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="text-[10px] uppercase tracking-[0.24em] text-cyan-200">Timing strip</div>
-                  <Badge variant={leadDriver ? badgeVariantForConfidence(leadDriver.confidence_label) : signalVariant(currentVolatility)}>
-                    {leadDriver?.confidence_label ?? "Preview"}
-                  </Badge>
+            {workspaceMode === "single" ? (
+              <>
+                <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge>Grand Prix</Badge>
+                      <StatusChip label="Preset" value={activePreset} variant={activePreset === "Custom" ? "muted" : "default"} />
+                      <StatusChip label="Weather" value={activeWeather.label} variant="info" />
+                      {activeTrack.sprint_weekend ? <StatusChip label="Weekend" value="Sprint" variant="warning" /> : null}
+                      <StatusChip label="Volatility" value={volatilityLabel(currentVolatility)} variant={signalVariant(currentVolatility)} />
+                      <StatusChip
+                        label="Sim"
+                        value={loadingSimulation ? "Running" : deferredSimulation ? "Loaded" : "Ready"}
+                        variant={loadingSimulation ? "warning" : deferredSimulation ? "success" : "muted"}
+                      />
+                    </div>
+                    <h2 className="mt-2.5 font-display text-[clamp(1.7rem,3vw,2.7rem)] leading-[0.98] tracking-[-0.05em] text-white">
+                      {activeTrack.name}
+                    </h2>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                      <span>{activeTrack.circuit_name}</span>
+                      <span>R{activeTrack.calendar_round}</span>
+                      <span>{form.simulation_runs} runs</span>
+                      <span>{form.complexity_level} detail</span>
+                    </div>
+                    <div className="mt-2.5 flex flex-wrap gap-2">
+                      <StatusChip label="Deg" value={activeTrack.degradation_profile} variant={telemetryVariant(activeTrack.tire_stress)} />
+                      <StatusChip label="Track pos" value={`${Math.round(activeTrack.track_position_importance * 100)}`} variant="info" />
+                      <StatusChip label="Energy" value={`${Math.round(activeTrack.energy_sensitivity * 100)}`} variant="default" />
+                      <StatusChip label="SC / VSC" value={`${Math.round((activeTrack.safety_car_risk + form.environment.full_safety_cars) * 50)}`} variant="warning" />
+                    </div>
+                  </div>
+
+                  <div className="flex w-full flex-col gap-2.5 xl:w-[360px] 2xl:w-[384px]">
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <Button className="w-full justify-center" onClick={() => void executeSimulation()} disabled={loadingSimulation}>
+                        {loadingSimulation ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+                        Run Grand Prix
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        className="w-full justify-center"
+                        onClick={() => void requestSuggestions()}
+                        disabled={loadingSuggestions}
+                      >
+                        {loadingSuggestions ? <Loader2 className="h-4 w-4 animate-spin" /> : <BarChart3 className="h-4 w-4" />}
+                        Refresh
+                      </Button>
+                    </div>
+                    <div className="grid gap-2 rounded-[10px] border border-white/8 bg-white/[0.03] px-3 py-2.5 sm:grid-cols-2">
+                      <StatusChip label="Weekend" value={activeWeather.label} variant="info" />
+                      <StatusChip label="Chaos" value={`${Math.round(form.environment.randomness_intensity * 100)}`} variant={signalVariant(form.environment.randomness_intensity)} />
+                      <StatusChip label="Quali" value={`${Math.round(form.weights.qualifying_importance * 100)}`} variant="info" />
+                      <StatusChip label="Track pos" value={`${Math.round(activeTrack.track_position_importance * 100)}`} variant="info" />
+                    </div>
+                    {error ? <div className="rounded-[10px] border border-rose-300/20 bg-rose-400/10 px-3 py-2 text-[12px] leading-5 text-rose-100">{error}</div> : null}
+                  </div>
                 </div>
-                {deferredSimulation ? (
-                  <div className="mt-2">
-                    <TimingStrip drivers={topDrivers} />
+
+                <div className="mt-3 grid gap-2 xl:grid-cols-[1.52fr_0.71fr] 2xl:grid-cols-[1.65fr_0.68fr]">
+                  <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                    <HeaderMetric
+                      label="Lead car"
+                      value={leadDriver ? leadDriver.driver_name : "Pending"}
+                      detail={leadDriver ? `${formatPct(leadDriver.win_probability)} win share` : "Run the current setup"}
+                      tone="default"
+                    />
+                    <HeaderMetric
+                      label="Podium lane"
+                      value={leadDriver ? formatPct(leadDriver.podium_probability) : "Pending"}
+                      detail={leadDriver ? `${leadDriver.team_name} tops the board` : "Awaiting run"}
+                      tone="success"
+                    />
+                    <HeaderMetric
+                      label="Points load"
+                      value={leadDriver ? leadDriver.expected_points.toFixed(1) : "Pending"}
+                      detail={leadDriver ? `${formatPct(leadDriver.points_probability)} points chance` : "Awaiting simulation"}
+                      tone="success"
+                    />
+                    <HeaderMetric
+                      label="Risk channel"
+                      value={deferredSimulation ? deferredSimulation.event_summary.dominant_factor : "Track-led"}
+                      detail={deferredSimulation ? deferredSimulation.scenario.event_outlook : "Track + control settings"}
+                      tone="warning"
+                    />
                   </div>
-                ) : (
-                  <div className="mt-2 line-clamp-2 font-mono text-[9px] uppercase tracking-[0.1em] text-muted-foreground">
-                    Run to load the projected top four, win odds, expected points, and strategy detail.
+                  <div className="rounded-[10px] border border-white/8 bg-black/25 p-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-[10px] uppercase tracking-[0.24em] text-cyan-200">Timing strip</div>
+                      <Badge variant={leadDriver ? badgeVariantForConfidence(leadDriver.confidence_label) : signalVariant(currentVolatility)}>
+                        {leadDriver?.confidence_label ?? "Preview"}
+                      </Badge>
+                    </div>
+                    {deferredSimulation ? (
+                      <div className="mt-2">
+                        <TimingStrip drivers={topDrivers} />
+                      </div>
+                    ) : (
+                      <div className="mt-2 line-clamp-2 font-mono text-[9px] uppercase tracking-[0.1em] text-muted-foreground">
+                        Run to load the projected top four, win odds, expected points, and strategy detail.
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
+              </>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="info">Compare mode</Badge>
+                      <StatusChip label="Scenario A" value={compareTitleA} variant="info" />
+                      <StatusChip label="Scenario B" value={compareTitleB} variant="default" />
+                      <StatusChip label="Changed fields" value={`${compareChangedFields.length}`} variant={compareChangedFields.length ? "warning" : "muted"} />
+                    </div>
+                    <h2 className="mt-2.5 font-display text-[clamp(1.7rem,3vw,2.5rem)] leading-[0.98] tracking-[-0.05em] text-white">
+                      Compare what changed, how much, and why
+                    </h2>
+                    <div className="mt-1 max-w-3xl text-[12px] leading-6 text-muted-foreground">
+                      Build two scenarios from the same baseline, run them with compare-safe caps, and inspect the race-order, strategy, movement, and risk deltas in one board.
+                    </div>
+                  </div>
+
+                  <div className="flex w-full flex-col gap-2.5 xl:w-[520px]">
+                    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                      <Button
+                        variant="secondary"
+                        className="w-full justify-center"
+                        onClick={() => duplicateCurrentIntoCompare()}
+                      >
+                        Duplicate baseline
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        className="w-full justify-center"
+                        onClick={() => {
+                          if (!compareFormA) return;
+                          setCompareFormB(cloneFormState(compareFormA));
+                          setCompareSimulationB(null);
+                        }}
+                      >
+                        Copy A → B
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        className="w-full justify-center"
+                        onClick={() => {
+                          if (!compareFormB) return;
+                          setCompareFormA(cloneFormState(compareFormB));
+                          setCompareSimulationA(null);
+                        }}
+                      >
+                        Copy B → A
+                      </Button>
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                      <Button
+                        variant="secondary"
+                        className="w-full justify-center"
+                        onClick={() => {
+                          if (!compareFormA || !compareFormB) return;
+                          const nextA = cloneFormState(compareFormB);
+                          const nextB = cloneFormState(compareFormA);
+                          const titleA = compareTitleB;
+                          const titleB = compareTitleA;
+                          const resultA = compareSimulationB;
+                          const resultB = compareSimulationA;
+                          const focusA = compareFocusDriverB;
+                          const focusB = compareFocusDriverA;
+                          setCompareFormA(nextA);
+                          setCompareFormB(nextB);
+                          setCompareTitleA(titleA);
+                          setCompareTitleB(titleB);
+                          setCompareSimulationA(resultA);
+                          setCompareSimulationB(resultB);
+                          setCompareFocusDriverA(focusA);
+                          setCompareFocusDriverB(focusB);
+                        }}
+                      >
+                        Swap A / B
+                      </Button>
+                      <Button className="w-full justify-center" onClick={() => void runCompareScenarios()} disabled={compareLoading !== null}>
+                        {compareLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+                        Run both
+                      </Button>
+                      <Button variant="secondary" className="w-full justify-center" onClick={() => setWorkspaceMode("single")}>
+                        Exit compare
+                      </Button>
+                    </div>
+                    {compareError ? <div className="rounded-[10px] border border-rose-300/20 bg-rose-400/10 px-3 py-2 text-[12px] leading-5 text-rose-100">{compareError}</div> : null}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       </motion.section>
 
+      {workspaceMode === "compare" && compareFormA && compareFormB ? (
+        <div className="space-y-3">
+          <motion.section {...motionProps}>
+            <div className="grid gap-3 xl:grid-cols-2">
+              <CompareConfigPanel
+                scenarioLabel="A"
+                title={compareTitleA}
+                onTitleChange={setCompareTitleA}
+                defaults={defaults}
+                form={compareFormA}
+                onFormChange={(value) => {
+                  setCompareFormA(value);
+                  setCompareSimulationA(null);
+                }}
+                changedFields={compareChangedFields}
+                focusDriverId={compareFocusDriverA || defaults.drivers[0]?.id || ""}
+                onFocusDriverChange={setCompareFocusDriverA}
+                loading={compareLoading === "A" || compareLoading === "both"}
+              />
+              <CompareConfigPanel
+                scenarioLabel="B"
+                title={compareTitleB}
+                onTitleChange={setCompareTitleB}
+                defaults={defaults}
+                form={compareFormB}
+                onFormChange={(value) => {
+                  setCompareFormB(value);
+                  setCompareSimulationB(null);
+                }}
+                changedFields={compareChangedFields}
+                focusDriverId={compareFocusDriverB || defaults.drivers[1]?.id || defaults.drivers[0]?.id || ""}
+                onFocusDriverChange={setCompareFocusDriverB}
+                loading={compareLoading === "B" || compareLoading === "both"}
+              />
+            </div>
+          </motion.section>
+
+          <motion.section {...motionProps}>
+            <SectionFrame
+              eyebrow="Comparison board"
+              title="Scenario delta view"
+              subtitle="What changed, how much it changed, and why the race model moved."
+              action={
+                <div className="flex items-center gap-2">
+                  <Badge variant="info">{compareChangedFields.length} changed fields</Badge>
+                  <DisclosureButton expanded={showCompareDetail} onToggle={() => setShowCompareDetail((value) => !value)} label="detail deck" />
+                </div>
+              }
+            >
+              {compareSimulationA && compareSimulationB ? (
+                <div className="space-y-3">
+                  <div className="rounded-[14px] border border-white/8 bg-black/20 p-3.5">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <div className="text-[10px] uppercase tracking-[0.24em] text-cyan-200">Compare summary</div>
+                        <div className="mt-1 text-sm text-white">
+                          {compareLeadA?.driver_name ?? "Scenario A"} vs {compareLeadB?.driver_name ?? "Scenario B"}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {compareChangedFields.slice(0, 5).map((field) => <Badge key={field} variant="info">{field}</Badge>)}
+                      </div>
+                    </div>
+                    <div className="mt-3 grid gap-2 border-t border-white/8 pt-3">
+                      {compareInsights.map((item) => (
+                        <div key={item} className="flex items-start gap-2 text-[11px] leading-5 text-muted-foreground">
+                          <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                          <span>{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2.5 md:grid-cols-2 xl:grid-cols-4">
+                    <CompareMetricCard
+                      label="Lead car"
+                      scenarioA={compareLeadA?.driver_name ?? "Pending"}
+                      scenarioB={compareLeadB?.driver_name ?? "Pending"}
+                      delta={compareLeadA?.driver_id === compareLeadB?.driver_id ? "Matched" : "Changed"}
+                      deltaTone={compareLeadA?.driver_id === compareLeadB?.driver_id ? "muted" : "info"}
+                      detail="Who controls the race once the first key windows open."
+                    />
+                    <CompareMetricCard
+                      label="Win odds"
+                      scenarioA={compareLeadA ? formatPct(compareLeadA.win_probability) : "Pending"}
+                      scenarioB={compareLeadB ? formatPct(compareLeadB.win_probability) : "Pending"}
+                      delta={compareDeltaText(compareWinDelta * 100, " pts")}
+                      deltaTone={compareBadgeVariant(compareWinDelta, true)}
+                      detail="Lead-car win probability difference from Scenario A to B."
+                    />
+                    <CompareMetricCard
+                      label="Podium / points"
+                      scenarioA={compareLeadA ? `${formatPct(compareLeadA.podium_probability)} · ${compareLeadA.expected_points.toFixed(1)} pts` : "Pending"}
+                      scenarioB={compareLeadB ? `${formatPct(compareLeadB.podium_probability)} · ${compareLeadB.expected_points.toFixed(1)} pts` : "Pending"}
+                      delta={compareDeltaText(comparePointsDelta, " pts")}
+                      deltaTone={compareBadgeVariant(comparePointsDelta, true)}
+                      detail={`Podium delta ${compareDeltaText(comparePodiumDelta * 100, " pts")} for the projected lead car.`}
+                    />
+                    <CompareMetricCard
+                      label="Risk / volatility"
+                      scenarioA={compareSimulationA ? volatilityLabel(compareSimulationA.event_summary.volatility_index) : "Pending"}
+                      scenarioB={compareSimulationB ? volatilityLabel(compareSimulationB.event_summary.volatility_index) : "Pending"}
+                      delta={compareDeltaText(compareVolatilityDelta, "", 2)}
+                      deltaTone={compareBadgeVariant(compareVolatilityDelta, false)}
+                      detail="Higher values mean more race-state instability and lower confidence."
+                    />
+                  </div>
+
+                  <div className="grid gap-3 xl:grid-cols-[1.1fr_0.9fr]">
+                    <div className="rounded-[14px] border border-white/8 bg-black/20 p-3.5">
+                      <div className="text-[10px] uppercase tracking-[0.24em] text-cyan-200">Top order difference</div>
+                      <div className="mt-3 grid gap-3 md:grid-cols-2">
+                        <div className="rounded-[12px] border border-white/8 bg-white/[0.03] p-3">
+                          <div className="mb-2 text-[10px] uppercase tracking-[0.22em] text-cyan-200">{compareTitleA}</div>
+                          <TimingStrip drivers={compareTopA} />
+                        </div>
+                        <div className="rounded-[12px] border border-white/8 bg-white/[0.03] p-3">
+                          <div className="mb-2 text-[10px] uppercase tracking-[0.22em] text-primary/90">{compareTitleB}</div>
+                          <TimingStrip drivers={compareTopB} />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="rounded-[14px] border border-white/8 bg-black/20 p-3.5">
+                        <div className="text-[10px] uppercase tracking-[0.24em] text-cyan-200">Strategy difference</div>
+                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                          <MetricPanel
+                            label={compareTitleA}
+                            value={formatLapValue(compareSimulationA.event_summary.strategy_diagnostics.avg_first_stop_lap)}
+                            detail={`Window ${formatLapWindow(compareSimulationA.event_summary.strategy_diagnostics.first_stop_window_start, compareSimulationA.event_summary.strategy_diagnostics.first_stop_window_end)} · ${compareLeadA?.expected_stop_count.toFixed(1) ?? "0.0"} avg stops`}
+                            tone="info"
+                            badgeLabel="A"
+                          />
+                          <MetricPanel
+                            label={compareTitleB}
+                            value={formatLapValue(compareSimulationB.event_summary.strategy_diagnostics.avg_first_stop_lap)}
+                            detail={`Window ${formatLapWindow(compareSimulationB.event_summary.strategy_diagnostics.first_stop_window_start, compareSimulationB.event_summary.strategy_diagnostics.first_stop_window_end)} · ${compareLeadB?.expected_stop_count.toFixed(1) ?? "0.0"} avg stops`}
+                            tone="default"
+                            badgeLabel="B"
+                          />
+                        </div>
+                        <div className="mt-2 text-[11px] leading-5 text-muted-foreground">
+                          {Math.abs(compareStopDelta) >= 1.5
+                            ? `Scenario ${compareStopDelta > 0 ? "A" : "B"} opens the first stop window earlier.`
+                            : "First-stop timing stays broadly similar across both scenarios."}
+                        </div>
+                      </div>
+
+                      <div className="rounded-[14px] border border-white/8 bg-black/20 p-3.5">
+                        <div className="text-[10px] uppercase tracking-[0.24em] text-cyan-200">Movement / overtake difference</div>
+                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                          <MetricPanel
+                            label="Scenario A"
+                            value={formatAveragePerRun(compareSimulationA.event_summary.movement_summary.avg_overtakes_per_simulation)}
+                            detail={formatAveragePerDriver(compareSimulationA.event_summary.movement_summary.avg_position_changes_per_driver)}
+                            tone={signalVariant(compareSimulationA.event_summary.movement_summary.race_fluidity_score)}
+                            badgeLabel={compareSimulationA.event_summary.movement_summary.overtaking_intensity}
+                          />
+                          <MetricPanel
+                            label="Scenario B"
+                            value={formatAveragePerRun(compareSimulationB.event_summary.movement_summary.avg_overtakes_per_simulation)}
+                            detail={formatAveragePerDriver(compareSimulationB.event_summary.movement_summary.avg_position_changes_per_driver)}
+                            tone={signalVariant(compareSimulationB.event_summary.movement_summary.race_fluidity_score)}
+                            badgeLabel={compareSimulationB.event_summary.movement_summary.overtaking_intensity}
+                          />
+                        </div>
+                        <div className="mt-2 text-[11px] leading-5 text-muted-foreground">
+                          {Math.abs(compareMovementDelta) >= 0.2
+                            ? `${compareMovementDelta > 0 ? "Scenario B" : "Scenario A"} produces more race movement and overtaking load.`
+                            : "Race movement remains close between the two scenarios."}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 xl:grid-cols-[0.95fr_1.05fr]">
+                    <div className="rounded-[14px] border border-white/8 bg-black/20 p-3.5">
+                      <div className="text-[10px] uppercase tracking-[0.24em] text-cyan-200">Risk / weather / SC difference</div>
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                        <MetricPanel
+                          label="Scenario A"
+                          value={formatScoreOutOf100(compareSimulationA.event_summary.event_timing.safety_car_leverage_score)}
+                          detail={`Crossover ${formatLapWindow(compareSimulationA.event_summary.event_timing.weather_crossover_window_start, compareSimulationA.event_summary.event_timing.weather_crossover_window_end)} · ${compareSimulationA.event_summary.dominant_factor}`}
+                          tone="warning"
+                          badgeLabel="SC"
+                        />
+                        <MetricPanel
+                          label="Scenario B"
+                          value={formatScoreOutOf100(compareSimulationB.event_summary.event_timing.safety_car_leverage_score)}
+                          detail={`Crossover ${formatLapWindow(compareSimulationB.event_summary.event_timing.weather_crossover_window_start, compareSimulationB.event_summary.event_timing.weather_crossover_window_end)} · ${compareSimulationB.event_summary.dominant_factor}`}
+                          tone="warning"
+                          badgeLabel="SC"
+                        />
+                      </div>
+                      <div className="mt-2 text-[11px] leading-5 text-muted-foreground">
+                        {Math.abs(compareScDelta) >= 0.08
+                          ? `Scenario ${compareScDelta > 0 ? "B" : "A"} is more sensitive to neutralization leverage and race-control timing.`
+                          : "Neutralization leverage is broadly aligned across the two scenarios."}
+                      </div>
+                    </div>
+
+                    <div className="rounded-[14px] border border-white/8 bg-black/20 p-3.5">
+                      <div className="text-[10px] uppercase tracking-[0.24em] text-cyan-200">Race phase delta</div>
+                      <div className="mt-3 grid gap-2">
+                        {comparePhaseRows.map((row) => {
+                          const volatilityDelta = (row.phaseB?.volatility ?? 0) - (row.phaseA?.volatility ?? 0);
+                          return (
+                            <div key={row.phaseId} className="rounded-[10px] border border-white/8 bg-white/[0.03] px-3 py-2.5">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">{row.label}</div>
+                                <Badge variant={compareBadgeVariant(volatilityDelta, false)}>{compareDeltaText(volatilityDelta, "", 2)}</Badge>
+                              </div>
+                              <div className="mt-1.5 text-[11px] leading-5 text-muted-foreground">
+                                A {row.phaseA ? volatilityLabel(row.phaseA.volatility) : "Pending"} · B {row.phaseB ? volatilityLabel(row.phaseB.volatility) : "Pending"}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {showCompareDetail ? (
+                    <div className="grid gap-3 xl:grid-cols-2">
+                      <SectionFrame eyebrow="Scenario A deep read" title={compareTitleA} subtitle={compareTrackA ? `${compareTrackA.name} · ${compareWeatherA?.label}` : undefined}>
+                        <div className="space-y-3">
+                          {compareLeadA ? <StintSummaryCard driver={compareLeadA} accent="info" expanded /> : null}
+                          {compareSimulationA?.event_summary.race_phases ? <RaceTimelineStrip phases={compareSimulationA.event_summary.race_phases} /> : null}
+                        </div>
+                      </SectionFrame>
+                      <SectionFrame eyebrow="Scenario B deep read" title={compareTitleB} subtitle={compareTrackB ? `${compareTrackB.name} · ${compareWeatherB?.label}` : undefined}>
+                        <div className="space-y-3">
+                          {compareLeadB ? <StintSummaryCard driver={compareLeadB} accent="default" expanded /> : null}
+                          {compareSimulationB?.event_summary.race_phases ? <RaceTimelineStrip phases={compareSimulationB.event_summary.race_phases} /> : null}
+                        </div>
+                      </SectionFrame>
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="rounded-[12px] border border-dashed border-white/10 bg-black/20 p-5 text-center">
+                  <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-[10px] border border-cyan-300/20 bg-cyan-300/10">
+                    <Radar className="h-5 w-5 text-cyan-200" />
+                  </div>
+                  <div className="mt-3 text-base uppercase tracking-[0.08em] text-white">Run both scenarios</div>
+                  <div className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                    Compare Mode runs the current engine twice with compare-safe caps, then computes delta summaries on the frontend.
+                  </div>
+                </div>
+              )}
+            </SectionFrame>
+          </motion.section>
+        </div>
+      ) : (
       <div className="grid gap-3 xl:grid-cols-[380px_minmax(0,1fr)_340px] 2xl:grid-cols-[420px_minmax(0,1fr)_360px]">
         <aside className="order-3 space-y-2.5 xl:order-1 xl:pr-1">
           <SectionFrame eyebrow="Control rail" title="Strategy inputs">
@@ -2351,6 +3288,7 @@ export function SimulatorWorkspace() {
           </SectionFrame>
         </aside>
       </div>
+      )}
     </div>
   );
 }
