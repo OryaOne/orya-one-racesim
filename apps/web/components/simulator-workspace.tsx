@@ -375,6 +375,64 @@ function formatCompactScore(value?: number | null, digits = 1) {
   return value.toFixed(digits);
 }
 
+function trustTierVariant(
+  value:
+    | "High confidence"
+    | "Moderate confidence"
+    | "Experimental / Low confidence"
+    | "Strong support"
+    | "Moderate support"
+    | "Limited support"
+    | "Deep calibration"
+    | "Established calibration"
+    | "Limited calibration"
+    | "Grounded"
+    | "Partially grounded"
+    | "Modeled-heavy"
+    | "Stable"
+    | "Variable"
+    | "High-chaos",
+): "success" | "warning" | "default" | "info" | "muted" {
+  if (
+    value === "High confidence"
+    || value === "Strong support"
+    || value === "Deep calibration"
+    || value === "Grounded"
+    || value === "Stable"
+  ) {
+    return "success";
+  }
+  if (
+    value === "Moderate confidence"
+    || value === "Moderate support"
+    || value === "Established calibration"
+    || value === "Partially grounded"
+    || value === "Variable"
+  ) {
+    return "warning";
+  }
+  if (value === "Experimental / Low confidence" || value === "Limited support" || value === "Limited calibration" || value === "High-chaos") {
+    return "default";
+  }
+  return "info";
+}
+
+function trustScoreLabel(value?: number | null) {
+  if (value == null || Number.isNaN(value)) {
+    return "Pending";
+  }
+  return `${Math.round(value * 100)}/100`;
+}
+
+function compactTrustLabel(value: string) {
+  return value
+    .replace(" confidence", "")
+    .replace(" support", "")
+    .replace(" calibration", "")
+    .replace(" / Low confidence", "")
+    .replace("Partially grounded", "Partial grounding");
+}
+
 function summarizePhaseLoad(value: number, type: "pit" | "move") {
   if (type === "pit") {
     if (value < 0.18) {
@@ -685,6 +743,91 @@ function InlineDataPoint({
       <div className="font-mono text-[8px] uppercase tracking-[0.18em] text-muted-foreground">{label}</div>
       <div className="mt-1 text-[12px] leading-none text-white">{value}</div>
     </div>
+  );
+}
+
+function TrustSummaryCard({
+  trust,
+  expanded,
+  onToggle,
+}: {
+  trust: NonNullable<SimulationResponse["scenario"]["trust_summary"]>;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <InsightCard title="Trust & calibration" subtitle="Confidence, support, grounding, and methodology honesty." icon={ShieldAlert} tone={trustTierVariant(trust.confidence_tier)}>
+      <div className="flex flex-wrap gap-2">
+        <Badge variant={trustTierVariant(trust.confidence_tier)}>{trust.confidence_tier}</Badge>
+        <Badge variant={trustTierVariant(trust.historical_support_tier)}>{trust.historical_support_tier}</Badge>
+        <Badge variant={trustTierVariant(trust.data_grounding_tier)}>{trust.data_grounding_tier}</Badge>
+        <Badge variant={trustTierVariant(trust.volatility_tier)}>{trust.volatility_tier}</Badge>
+      </div>
+      <div className="text-[12px] leading-5 text-muted-foreground">{trust.confidence_summary}</div>
+      <div className="grid gap-3">
+        <SignalMeter label="Confidence" value={trust.confidence_score} secondary={trustScoreLabel(trust.confidence_score)} tone={trustTierVariant(trust.confidence_tier)} />
+        <SignalMeter label="Historical support" value={trust.historical_support_score} secondary={trustScoreLabel(trust.historical_support_score)} tone={trustTierVariant(trust.historical_support_tier)} />
+        <SignalMeter label="Data grounding" value={trust.data_grounding_score} secondary={trustScoreLabel(trust.data_grounding_score)} tone={trustTierVariant(trust.data_grounding_tier)} />
+      </div>
+      <div className="grid gap-2 sm:grid-cols-3">
+        <MetricPanel
+          label="Winner hit"
+          value={formatPct(trust.backtest_summary.winner_hit_rate)}
+          detail={`${trust.backtest_summary.weekends_covered} weekends in the current benchmark report`}
+          tone="info"
+          badgeLabel="Backtest"
+        />
+        <MetricPanel
+          label="Podium overlap"
+          value={formatPct(trust.backtest_summary.podium_overlap_rate)}
+          detail={`Finish MAE ${trust.backtest_summary.avg_finish_mae.toFixed(2)}`}
+          tone="info"
+          badgeLabel="Backtest"
+        />
+        <MetricPanel
+          label="Track behavior"
+          value={trust.backtest_summary.avg_track_behavior_error.toFixed(2)}
+          detail={`Stop-count MAE ${trust.backtest_summary.avg_stop_count_mae.toFixed(2)}`}
+          tone="warning"
+          badgeLabel="Error"
+        />
+      </div>
+      <div className="flex justify-end">
+        <DisclosureButton expanded={expanded} onToggle={onToggle} label="trust notes" />
+      </div>
+      {expanded ? (
+        <div className="grid gap-3 border-t border-white/8 pt-3 lg:grid-cols-2">
+          <div className="space-y-2">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-cyan-200">Calibration notes</div>
+            {trust.calibration_notes.concat(trust.support_notes, trust.coverage_notes).map((item) => (
+              <div key={item} className="flex items-start gap-2 text-[11px] leading-5 text-muted-foreground">
+                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
+          <div className="space-y-2">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-cyan-200">Provenance</div>
+            {[
+              { label: "Official", items: trust.provenance.official_sources },
+              { label: "Normalized", items: trust.provenance.normalized_datasets },
+              { label: "Modeled", items: trust.provenance.modeled_inputs },
+              { label: "Calibrated", items: trust.provenance.calibrated_layers },
+              { label: "Live assumptions", items: trust.provenance.live_assumptions },
+            ].map((group) => (
+              <div key={group.label} className="rounded-[10px] border border-white/8 bg-black/20 p-2.5">
+                <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">{group.label}</div>
+                <div className="mt-1.5 grid gap-1">
+                  {group.items.slice(0, 3).map((item) => (
+                    <div key={item} className="text-[11px] leading-5 text-muted-foreground">{item}</div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </InsightCard>
   );
 }
 
@@ -1489,6 +1632,7 @@ export function SimulatorWorkspace() {
   const [showMovementDetail, setShowMovementDetail] = useState(false);
   const [showDeepRaceDetail, setShowDeepRaceDetail] = useState(false);
   const [showTelemetryRail, setShowTelemetryRail] = useState(false);
+  const [showTrustDetail, setShowTrustDetail] = useState(false);
   const [loadingDefaults, setLoadingDefaults] = useState(true);
   const [loadingSimulation, setLoadingSimulation] = useState(false);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
@@ -1708,6 +1852,7 @@ export function SimulatorWorkspace() {
   const strategyDiagnostics = deferredSimulation?.event_summary.strategy_diagnostics;
   const eventTiming = deferredSimulation?.event_summary.event_timing;
   const racePhases = deferredSimulation?.event_summary.race_phases ?? [];
+  const trustSummary = deferredSimulation?.scenario.trust_summary;
   const stopMix = strategyDiagnostics?.stop_count_distribution ?? [];
   const stopMixLeader = stopMix[0];
   const biggestMovers = deferredDrivers
@@ -1745,6 +1890,8 @@ export function SimulatorWorkspace() {
     compareFormB ? defaults.weather_presets.find((item) => item.id === compareFormB.weather_preset_id) ?? defaults.weather_presets[0] : null;
   const compareLeadA = compareSimulationA?.drivers[0] ?? null;
   const compareLeadB = compareSimulationB?.drivers[0] ?? null;
+  const compareTrustA = compareSimulationA?.scenario.trust_summary ?? null;
+  const compareTrustB = compareSimulationB?.scenario.trust_summary ?? null;
   const compareTopA = compareSimulationA?.drivers.slice(0, 4) ?? [];
   const compareTopB = compareSimulationB?.drivers.slice(0, 4) ?? [];
   const compareInsights =
@@ -1776,6 +1923,21 @@ export function SimulatorWorkspace() {
       phaseB,
     };
   });
+  const compareTrustNarrative = (() => {
+    if (!compareTrustA || !compareTrustB) {
+      return "Run both scenarios to compare confidence, historical support, and grounding side by side.";
+    }
+
+    const confidenceDelta = compareTrustB.confidence_score - compareTrustA.confidence_score;
+    const supportDelta = compareTrustB.historical_support_score - compareTrustA.historical_support_score;
+    if (Math.abs(confidenceDelta) < 0.05 && Math.abs(supportDelta) < 0.05) {
+      return "Both scenarios sit on similar trust footing; the key trade-off is race behavior, not calibration depth.";
+    }
+    if (confidenceDelta > 0.05) {
+      return `Scenario B is better grounded overall, with ${compareTrustB.historical_support_tier.toLowerCase()} and ${compareTrustB.volatility_tier.toLowerCase()} conditions.`;
+    }
+    return `Scenario A is better grounded overall, with ${compareTrustA.historical_support_tier.toLowerCase()} and ${compareTrustA.volatility_tier.toLowerCase()} conditions.`;
+  })();
   const compareDecisionCall = (() => {
     if (!compareSimulationA || !compareSimulationB) {
       return {
@@ -2164,6 +2326,40 @@ export function SimulatorWorkspace() {
                       deltaTone={compareBadgeVariant(compareVolatilityDelta, false)}
                       detail="Higher values mean more race-state instability and lower confidence."
                     />
+                  </div>
+
+                  <div className="rounded-[14px] border border-white/8 bg-black/20 p-3.5">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-[10px] uppercase tracking-[0.24em] text-cyan-200">Confidence / calibration</div>
+                        <div className="mt-1 text-sm text-white">{compareTrustNarrative}</div>
+                      </div>
+                      <Badge variant="info">Trust delta</Badge>
+                    </div>
+                    <div className="mt-3 grid gap-3 border-t border-white/8 pt-3 lg:grid-cols-2">
+                      <div className="rounded-[12px] border border-white/8 bg-white/[0.03] p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="text-[10px] uppercase tracking-[0.22em] text-cyan-200">{compareTitleA}</div>
+                          {compareTrustA ? <Badge variant={trustTierVariant(compareTrustA.confidence_tier)}>{compactTrustLabel(compareTrustA.confidence_tier)}</Badge> : null}
+                        </div>
+                        <div className="mt-3 grid gap-2">
+                          <SignalMeter label="Confidence" value={compareTrustA?.confidence_score ?? 0} secondary={trustScoreLabel(compareTrustA?.confidence_score)} tone={compareTrustA ? trustTierVariant(compareTrustA.confidence_tier) : "muted"} />
+                          <SignalMeter label="Support" value={compareTrustA?.historical_support_score ?? 0} secondary={compareTrustA ? compactTrustLabel(compareTrustA.historical_support_tier) : "Pending"} tone={compareTrustA ? trustTierVariant(compareTrustA.historical_support_tier) : "muted"} />
+                          <SignalMeter label="Grounding" value={compareTrustA?.data_grounding_score ?? 0} secondary={compareTrustA ? compactTrustLabel(compareTrustA.data_grounding_tier) : "Pending"} tone={compareTrustA ? trustTierVariant(compareTrustA.data_grounding_tier) : "muted"} />
+                        </div>
+                      </div>
+                      <div className="rounded-[12px] border border-white/8 bg-white/[0.03] p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="text-[10px] uppercase tracking-[0.22em] text-primary/90">{compareTitleB}</div>
+                          {compareTrustB ? <Badge variant={trustTierVariant(compareTrustB.confidence_tier)}>{compactTrustLabel(compareTrustB.confidence_tier)}</Badge> : null}
+                        </div>
+                        <div className="mt-3 grid gap-2">
+                          <SignalMeter label="Confidence" value={compareTrustB?.confidence_score ?? 0} secondary={trustScoreLabel(compareTrustB?.confidence_score)} tone={compareTrustB ? trustTierVariant(compareTrustB.confidence_tier) : "muted"} />
+                          <SignalMeter label="Support" value={compareTrustB?.historical_support_score ?? 0} secondary={compareTrustB ? compactTrustLabel(compareTrustB.historical_support_tier) : "Pending"} tone={compareTrustB ? trustTierVariant(compareTrustB.historical_support_tier) : "muted"} />
+                          <SignalMeter label="Grounding" value={compareTrustB?.data_grounding_score ?? 0} secondary={compareTrustB ? compactTrustLabel(compareTrustB.data_grounding_tier) : "Pending"} tone={compareTrustB ? trustTierVariant(compareTrustB.data_grounding_tier) : "muted"} />
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="grid gap-3 xl:grid-cols-[1.1fr_0.9fr]">
@@ -2838,13 +3034,17 @@ export function SimulatorWorkspace() {
                     <div className="rounded-[14px] border border-white/8 bg-black/20 p-3.5">
                       <div className="flex items-center justify-between gap-3">
                         <div className="text-[10px] uppercase tracking-[0.24em] text-cyan-200">Race snapshot</div>
-                        <Badge variant={signalVariant(currentVolatility)}>{volatilityLabel(currentVolatility)}</Badge>
+                        <Badge variant={trustSummary ? trustTierVariant(trustSummary.confidence_tier) : signalVariant(currentVolatility)}>
+                          {trustSummary ? compactTrustLabel(trustSummary.confidence_tier) : volatilityLabel(currentVolatility)}
+                        </Badge>
                       </div>
-                      <div className="mt-3 grid gap-y-3 border-t border-white/8 pt-3 sm:grid-cols-2 xl:grid-cols-4 xl:gap-x-5">
+                      <div className="mt-3 grid gap-y-3 border-t border-white/8 pt-3 sm:grid-cols-2 xl:grid-cols-3 xl:gap-x-5">
                         <InlineDataPoint label="Lead car" value={leadDriver ? leadDriver.driver_name : "Pending"} />
                         <InlineDataPoint label="Podium lane" value={leadDriver ? formatPct(leadDriver.podium_probability) : "Pending"} />
-                        <InlineDataPoint label="Likely mover" value={biggestMovers[0] ? biggestMovers[0].driver_name : "Pending"} />
-                        <InlineDataPoint label="Hardest pass" value={hardestToPass[0] ? hardestToPass[0].driver_name : "Pending"} />
+                        <InlineDataPoint label="Confidence" value={trustSummary ? compactTrustLabel(trustSummary.confidence_tier) : "Pending"} />
+                        <InlineDataPoint label="Historical support" value={trustSummary ? compactTrustLabel(trustSummary.historical_support_tier) : "Pending"} />
+                        <InlineDataPoint label="Grounding" value={trustSummary ? compactTrustLabel(trustSummary.data_grounding_tier) : "Pending"} />
+                        <InlineDataPoint label="Volatility" value={trustSummary ? trustSummary.volatility_tier : volatilityLabel(currentVolatility)} />
                       </div>
                     </div>
                   </div>
@@ -3160,6 +3360,9 @@ export function SimulatorWorkspace() {
         </main>
 
         <aside className="order-2 grid gap-3 sm:grid-cols-2 xl:order-3 xl:grid-cols-1 xl:pl-1">
+          {trustSummary ? (
+            <TrustSummaryCard trust={trustSummary} expanded={showTrustDetail} onToggle={() => setShowTrustDetail((value) => !value)} />
+          ) : null}
           <InsightCard
             title="Movement load"
             subtitle="Race fluidity and passing."

@@ -229,6 +229,42 @@ class TeamSummary(BaseModel):
     combined_podium_probability: float
 
 
+class CalibrationMetricsSummary(BaseModel):
+    weekends_covered: int
+    winner_hit_rate: float
+    podium_overlap_rate: float
+    avg_finish_mae: float
+    avg_stop_count_mae: float
+    avg_track_behavior_error: float
+
+
+class ProvenanceSummary(BaseModel):
+    official_sources: list[str] = Field(default_factory=list)
+    normalized_datasets: list[str] = Field(default_factory=list)
+    modeled_inputs: list[str] = Field(default_factory=list)
+    calibrated_layers: list[str] = Field(default_factory=list)
+    live_assumptions: list[str] = Field(default_factory=list)
+
+
+class ScenarioTrustSummary(BaseModel):
+    confidence_tier: Literal["High confidence", "Moderate confidence", "Experimental / Low confidence"]
+    historical_support_tier: Literal["Strong support", "Moderate support", "Limited support"]
+    calibration_depth_tier: Literal["Deep calibration", "Established calibration", "Limited calibration"]
+    volatility_tier: Literal["Stable", "Variable", "High-chaos"]
+    data_grounding_tier: Literal["Grounded", "Partially grounded", "Modeled-heavy"]
+    confidence_score: float
+    historical_support_score: float
+    calibration_depth_score: float
+    data_grounding_score: float
+    confidence_summary: str
+    calibration_notes: list[str] = Field(default_factory=list)
+    support_notes: list[str] = Field(default_factory=list)
+    coverage_notes: list[str] = Field(default_factory=list)
+    experimental_flag: bool = False
+    provenance: ProvenanceSummary
+    backtest_summary: CalibrationMetricsSummary
+
+
 class ScenarioSummary(BaseModel):
     grand_prix_id: str
     grand_prix_name: str
@@ -242,6 +278,7 @@ class ScenarioSummary(BaseModel):
     strategy_outlook: str
     event_outlook: str
     confidence_note: str
+    trust_summary: ScenarioTrustSummary
 
 
 class SimulationResponse(BaseModel):

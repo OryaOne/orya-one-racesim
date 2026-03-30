@@ -18,6 +18,43 @@ const sections = [
     title: "4. Race control and Monte Carlo",
     text: "Weather shifts, yellow flags, VSCs, safety cars, red flags, incidents, and DNFs are sampled repeatedly. The result is a probability distribution for the configured weekend, not a single hard forecast.",
   },
+  {
+    title: "5. Trust and calibration layer",
+    text: "Each scenario now carries an explicit trust summary: confidence tier, historical support tier, calibration depth, data grounding, and volatility. Those trust labels are derived from the current historical support basket, backtest coverage, and scenario complexity rather than from marketing-style certainty scores.",
+  },
+  {
+    title: "6. Provenance separation",
+    text: "The product keeps official source data, normalized historical datasets, modeled seed priors, calibrated parameters, and live user assumptions separate on purpose. The simulator does not present modeled assumptions as if they were official FIA / Formula 1 facts.",
+  },
+];
+
+const provenanceLayers = [
+  {
+    title: "Official source data",
+    tone: "success",
+    text: "Formula 1 result pages, starting grids / qualifying pages, and pit-stop summaries used in the historical pipeline.",
+  },
+  {
+    title: "Normalized historical data",
+    tone: "info",
+    text: "Project-shaped historical weekend files with explicit provenance tags for derived weather and neutralization markers.",
+  },
+  {
+    title: "Modeled priors",
+    tone: "warning",
+    text: "2026 pace priors, weather/disruption assumptions, and user-entered setup levers used to simulate scenarios that are not directly observed.",
+  },
+  {
+    title: "Calibrated layers",
+    tone: "default",
+    text: "Circuit leverage, overtaking, strategy pressure, and event logic tuned against the current historical subset and backtest reports.",
+  },
+];
+
+const trustSignals = [
+  "High confidence: well-supported, lower-chaos scenario families where the simulator behaves closest to a calibrated probability map.",
+  "Moderate confidence: historically anchored enough to trust the broad race shape, but still materially sensitive to race-state evolution.",
+  "Experimental / Low confidence: thinner circuit support, heavier chaos, wet crossover pressure, or scenario complexity beyond the strongest calibration set.",
 ];
 
 export default function MethodologyPage() {
@@ -47,6 +84,41 @@ export default function MethodologyPage() {
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
         <Card>
           <CardHeader>
+            <CardTitle>How provenance is separated</CardTitle>
+            <CardDescription>
+              The simulator distinguishes source-backed evidence, normalized project data, calibrated layers, and live scenario assumptions instead of blending them together.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 md:grid-cols-2">
+            {provenanceLayers.map((item) => (
+              <div key={item.title} className="rounded-[16px] border border-white/8 bg-black/20 p-4">
+                <Badge variant={item.tone as "default" | "success" | "warning" | "info"}>{item.title}</Badge>
+                <div className="mt-3 text-sm leading-7 text-muted-foreground">{item.text}</div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>How to read confidence</CardTitle>
+            <CardDescription>
+              Confidence is a calibrated product signal, not an official probability of truth. It reflects support depth, volatility, and similarity to the current historical basket.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            {trustSignals.map((item) => (
+              <div key={item} className="rounded-[16px] border border-white/8 bg-black/20 p-4 text-sm leading-7 text-muted-foreground">
+                {item}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+        <Card>
+          <CardHeader>
             <CardTitle>What the current build handles well</CardTitle>
             <CardDescription>
               The model is strongest when it is used as a scenario tool for race weekend tradeoffs rather than as a claim of exact lap-by-lap truth.
@@ -58,6 +130,7 @@ export default function MethodologyPage() {
               "Strategy recommendations tied to weather, track position, degradation, and race-control assumptions",
               "Driver explanations built from actual model signals instead of generic summary text",
               "Points-aware weekend outputs, including expected race points and constructors contribution",
+              "Scenario trust summaries that separate historically grounded baselines from more experimental weather- or chaos-heavy reads",
             ].map((item) => (
               <div key={item} className="rounded-[16px] border border-white/8 bg-black/20 p-4 text-sm leading-7 text-muted-foreground">
                 {item}
@@ -79,6 +152,7 @@ export default function MethodologyPage() {
               "2026 deployment and active-aero behavior are modeled as scenario levers, not detailed control laws",
               "Qualifying is represented through leverage and pace rather than a separate session simulator",
               "Team and driver priors are estimated inputs, even though the 2026 season entities are real",
+              "Historical support is still a small initial basket rather than a broad multi-season calibration set",
             ].map((item) => (
               <div key={item} className="rounded-[16px] border border-white/8 bg-black/20 p-4 text-sm leading-7 text-muted-foreground">
                 {item}

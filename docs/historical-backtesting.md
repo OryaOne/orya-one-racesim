@@ -40,6 +40,34 @@ data/historical/
 
 The raw extracts remain official-source grounded. The seed bundle is explicitly modeled.
 
+## Trust model and provenance honesty
+
+The trust layer in the product keeps five things separate:
+
+- official source data
+- normalized historical data
+- modeled seed priors
+- calibrated simulation layers
+- live scenario assumptions
+
+That distinction is intentional. The simulator may be historically grounded, but it is not a replay engine and it does not present modeled assumptions as official FIA / Formula 1 facts.
+
+### What the user-facing trust tiers mean
+
+- `High confidence`: stronger historical support, lower-chaos scenario family, closer to the current calibrated benchmark set
+- `Moderate confidence`: historically anchored enough to trust the broad race shape, but still materially sensitive to modeled race-state evolution
+- `Experimental / Low confidence`: thinner support, heavier weather/disruption complexity, or scenario conditions that extend beyond the strongest calibrated cases
+
+Those tiers are derived from:
+
+- historical circuit support in the normalized dataset
+- whether the circuit is in the current backtest report
+- wet-race / crossover complexity
+- disruption and volatility pressure
+- sprint / scenario complexity penalties
+
+They are not official confidence claims. They are product-level trust signals designed to tell the user how cautiously to read a simulation.
+
 ## Supported official source types
 
 The ingestion schema supports:

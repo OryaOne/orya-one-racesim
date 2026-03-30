@@ -275,6 +275,42 @@ export type TeamSummary = {
   combined_podium_probability: number;
 };
 
+export type CalibrationMetricsSummary = {
+  weekends_covered: number;
+  winner_hit_rate: number;
+  podium_overlap_rate: number;
+  avg_finish_mae: number;
+  avg_stop_count_mae: number;
+  avg_track_behavior_error: number;
+};
+
+export type ProvenanceSummary = {
+  official_sources: string[];
+  normalized_datasets: string[];
+  modeled_inputs: string[];
+  calibrated_layers: string[];
+  live_assumptions: string[];
+};
+
+export type ScenarioTrustSummary = {
+  confidence_tier: "High confidence" | "Moderate confidence" | "Experimental / Low confidence";
+  historical_support_tier: "Strong support" | "Moderate support" | "Limited support";
+  calibration_depth_tier: "Deep calibration" | "Established calibration" | "Limited calibration";
+  volatility_tier: "Stable" | "Variable" | "High-chaos";
+  data_grounding_tier: "Grounded" | "Partially grounded" | "Modeled-heavy";
+  confidence_score: number;
+  historical_support_score: number;
+  calibration_depth_score: number;
+  data_grounding_score: number;
+  confidence_summary: string;
+  calibration_notes: string[];
+  support_notes: string[];
+  coverage_notes: string[];
+  experimental_flag: boolean;
+  provenance: ProvenanceSummary;
+  backtest_summary: CalibrationMetricsSummary;
+};
+
 export type EventSummary = {
   weather_shift_rate: number;
   yellow_flag_rate: number;
@@ -311,6 +347,7 @@ export type ScenarioSummary = {
   strategy_outlook: string;
   event_outlook: string;
   confidence_note: string;
+  trust_summary: ScenarioTrustSummary;
 };
 
 export type SimulationResponse = {

@@ -65,6 +65,49 @@ def test_simulation_returns_ranked_driver_results():
     assert response.event_summary.evolution_summary
     assert response.drivers[0].primary_stint_path
     assert response.drivers[0].first_pit_window_start is None or response.drivers[0].first_pit_window_end is not None
+    assert response.scenario.trust_summary.confidence_tier
+    assert response.scenario.trust_summary.provenance.official_sources
+    assert response.scenario.trust_summary.backtest_summary.weekends_covered >= 0
+
+
+def test_trust_summary_marks_supported_baselines_and_lower_support_chaos():
+    service = SimulationService()
+    monza = service.simulate(
+        SimulationRequest(
+            grand_prix_id="italian-grand-prix",
+            weather_preset_id="dry-baseline",
+            simulation_runs=60,
+        )
+    )
+    spa_chaos = service.simulate(
+        SimulationRequest(
+            grand_prix_id="belgian-grand-prix",
+            weather_preset_id="rain-crossover-threat",
+            simulation_runs=60,
+            environment=EnvironmentControls(
+                dry_race=0.2,
+                mixed_conditions=0.8,
+                rain_onset=0.7,
+                track_evolution=0.6,
+                temperature_variation=0.6,
+                energy_deployment_intensity=0.7,
+                crashes=0.28,
+                dnfs=0.2,
+                yellow_flags=0.3,
+                virtual_safety_cars=0.25,
+                full_safety_cars=0.3,
+                red_flags=0.08,
+                late_race_incidents=0.25,
+                randomness_intensity=0.8,
+            ),
+        )
+    )
+
+    assert monza.scenario.trust_summary.historical_support_tier in {"Strong support", "Moderate support"}
+    assert monza.scenario.trust_summary.data_grounding_tier in {"Grounded", "Partially grounded"}
+    assert spa_chaos.scenario.trust_summary.volatility_tier == "High-chaos"
+    assert spa_chaos.scenario.trust_summary.confidence_score < monza.scenario.trust_summary.confidence_score
+    assert spa_chaos.scenario.trust_summary.experimental_flag
 
 
 def test_named_circuits_hold_extreme_leverage_profiles():

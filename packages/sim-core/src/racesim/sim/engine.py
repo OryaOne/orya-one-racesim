@@ -1,15 +1,20 @@
 from __future__ import annotations
 
+import json
 import math
 import random
 from collections import Counter, defaultdict
+from functools import lru_cache
 from statistics import mean
 
 from racesim.api.contracts import (
+    CalibrationMetricsSummary,
     DriverResult,
     EventSummary,
     PositionProbability,
+    ProvenanceSummary,
     ScenarioSummary,
+    ScenarioTrustSummary,
     SimulationRequest,
     SimulationResponse,
     StrategySuggestion,
@@ -19,12 +24,21 @@ from racesim.api.contracts import (
 from racesim.data.loaders import build_defaults_payload, get_team, get_track, get_weather, load_drivers, load_strategy_templates, load_teams
 from racesim.data.models import DriverProfile, StrategyTemplate, TeamProfile, TrackProfile, WeatherPreset
 from racesim.model.predictor import PacePredictor
+from racesim.paths import historical_normalized_root, historical_reports_root
 from racesim.sim.lap_engine import LapRaceEngine
 from racesim.sim.state import DriverStaticProfile, build_circuit_leverage
 from racesim.sim.strategies import StrategyFit, apply_overrides, evaluate_strategy, strategy_lookup, suggest_strategies, risk_profile_for
 
 RACE_POINTS = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1]
 SPRINT_POINTS = [8, 7, 6, 5, 4, 3, 2, 1]
+TRACK_SUPPORT_NOTES = {
+    "monaco-grand-prix": "Strong dry-race support for track-position-led behavior.",
+    "italian-grand-prix": "Strong support for a high-speed, overtaking-enabled race profile.",
+    "belgian-grand-prix": "Moderate support with extra caution on rain crossover and chaotic weather states.",
+    "singapore-grand-prix": "Moderate support for disruption-heavy street-race behavior.",
+    "azerbaijan-grand-prix": "Moderate support for restart-heavy, volatility-driven racing.",
+    "british-grand-prix": "Strong support for a high-speed stable baseline circuit.",
+}
 
 
 def build_feature_vector(driver: DriverProfile, track: TrackProfile, weather: WeatherPreset) -> dict[str, float]:
@@ -282,6 +296,7 @@ class SimulationService:
             strategy_outlook=self._strategy_outlook(track, weather, request),
             event_outlook=self._event_outlook(event_summary),
             confidence_note=self._confidence_note(driver_results, event_summary),
+            trust_summary=self._build_trust_summary(track, weather, request, driver_results, event_summary),
         )
 
         return SimulationResponse(
@@ -1036,6 +1051,177 @@ class SimulationService:
             return "The front of the field is comparatively well anchored, but the lap model still leaves room for strategy and traffic to reshuffle the points fight."
         return "Confidence is moderate overall; race flow matters enough that a single fixed ranking would overstate certainty."
 
+    def _build_trust_summary(
+        self,
+        track: TrackProfile,
+        weather: WeatherPreset,
+        request: SimulationRequest,
+        driver_results: list[DriverResult],
+        event_summary: EventSummary,
+    ) -> ScenarioTrustSummary:
+        normalized_circuits = _normalized_circuit_ids()
+        report = _backtest_report()
+        backtested_circuits = set(report["weekend_ids"])
+
+        coverage_count = 1 if track.id in normalized_circuits else 0
+        historical_support_score = 0.68 if coverage_count else 0.34
+        calibration_depth_score = 0.63 if track.id in backtested_circuits else 0.41
+        data_grounding_score = 0.74 if coverage_count else 0.48
+
+        complexity_penalty = 0.0
+        coverage_notes: list[str] = []
+
+        if weather.rain_onset_probability > 0.35 or request.environment.rain_onset > 0.35:
+            historical_support_score -= 0.12
+            calibration_depth_score -= 0.1
+            data_grounding_score -= 0.06
+            complexity_penalty += 0.08
+            coverage_notes.append("Wet-race and crossover behavior have less direct historical support than dry baselines.")
+        if event_summary.volatility_index > 0.5:
+            historical_support_score -= 0.06
+            calibration_depth_score -= 0.08
+            complexity_penalty += 0.06
+            coverage_notes.append("High-chaos race control states are less stable than the calibrated dry-race core.")
+        if request.environment.full_safety_cars > 0.18 or request.environment.red_flags > 0.05:
+            calibration_depth_score -= 0.05
+            complexity_penalty += 0.05
+            coverage_notes.append("Heavy SC / red-flag scenarios are treated as lower-support extrapolations.")
+        if track.sprint_weekend:
+            historical_support_score -= 0.08
+            calibration_depth_score -= 0.08
+            data_grounding_score -= 0.04
+            complexity_penalty += 0.04
+            coverage_notes.append("Sprint-weekend support is currently more limited than full Grand Prix baselines.")
+
+        historical_support_score = _clamp(historical_support_score)
+        calibration_depth_score = _clamp(calibration_depth_score)
+        data_grounding_score = _clamp(data_grounding_score)
+
+        volatility_score = _clamp(
+            event_summary.volatility_index * 0.55
+            + request.environment.randomness_intensity * 0.2
+            + request.environment.rain_onset * 0.15
+            + request.environment.full_safety_cars * 0.1
+        )
+        stability_score = 1.0 - volatility_score
+        confidence_score = _clamp(
+            historical_support_score * 0.3
+            + calibration_depth_score * 0.26
+            + data_grounding_score * 0.22
+            + stability_score * 0.22
+            - complexity_penalty
+        )
+
+        stable_count = sum(1 for driver in driver_results[:4] if driver.confidence_label == "Stable")
+        if stable_count >= 2 and confidence_score < 0.75:
+            confidence_score = min(1.0, confidence_score + 0.03)
+
+        historical_support_tier = _tier_label(
+            historical_support_score,
+            high="Strong support",
+            medium="Moderate support",
+            low="Limited support",
+        )
+        calibration_depth_tier = _tier_label(
+            calibration_depth_score,
+            high="Deep calibration",
+            medium="Established calibration",
+            low="Limited calibration",
+        )
+        data_grounding_tier = _tier_label(
+            data_grounding_score,
+            high="Grounded",
+            medium="Partially grounded",
+            low="Modeled-heavy",
+        )
+        confidence_tier = _tier_label(
+            confidence_score,
+            high="High confidence",
+            medium="Moderate confidence",
+            low="Experimental / Low confidence",
+        )
+        volatility_tier = _volatility_tier(volatility_score)
+
+        support_notes = [TRACK_SUPPORT_NOTES.get(track.id, "This circuit is currently outside the strongest historical support basket.")]
+        if coverage_count:
+            support_notes.append("One normalized official historical weekend exists in the current calibration set for this circuit.")
+        else:
+            support_notes.append("This circuit is currently extrapolated from calibrated archetypes more than direct circuit-specific history.")
+        if track.id in backtested_circuits:
+            support_notes.append("The current backtest report includes this circuit directly.")
+        else:
+            support_notes.append("This circuit is not yet in the current benchmarked backtest report.")
+
+        calibration_notes = [
+            "Circuit leverage, overtaking, and strategy pressure are calibrated against the current historical subset.",
+            "User-entered controls, driver overrides, and weather/disruption settings remain modeled scenario assumptions.",
+        ]
+        if calibration_depth_score < 0.5:
+            calibration_notes.append("Treat this as an extrapolation from similar race archetypes rather than a deeply benchmarked circuit model.")
+        if event_summary.volatility_index > 0.5:
+            calibration_notes.append("High race-state volatility lowers stability even when the underlying circuit is historically supported.")
+
+        aggregate = report["aggregate"]
+        backtest_summary = CalibrationMetricsSummary(
+            weekends_covered=aggregate["weekends"],
+            winner_hit_rate=aggregate["winner_hit_rate"],
+            podium_overlap_rate=aggregate["avg_podium_overlap_rate"],
+            avg_finish_mae=aggregate["avg_finish_mae"],
+            avg_stop_count_mae=aggregate["avg_stop_count_mae"],
+            avg_track_behavior_error=aggregate["avg_track_behavior_error"],
+        )
+
+        provenance = ProvenanceSummary(
+            official_sources=[
+                "Official Formula 1 race classification pages",
+                "Official Formula 1 grid / qualifying pages",
+                "Official Formula 1 pit-stop summary pages",
+            ],
+            normalized_datasets=[
+                "Project-normalized historical weekend files",
+                "Derived weather / neutralization markers with provenance tags",
+            ],
+            modeled_inputs=[
+                "2026 driver and team seed priors",
+                "Weather and disruption assumptions",
+                "Scenario control weights and driver overrides",
+            ],
+            calibrated_layers=[
+                "Circuit leverage tuning",
+                "Strategy and overtaking calibration",
+                "Historical backtest heuristics",
+            ],
+            live_assumptions=[
+                f"{track.name} with {weather.label.lower()}",
+                f"{request.complexity_level} simulation detail at {request.simulation_runs} runs",
+                "User-entered setup levers and race-control settings",
+            ],
+        )
+
+        return ScenarioTrustSummary(
+            confidence_tier=confidence_tier,
+            historical_support_tier=historical_support_tier,
+            calibration_depth_tier=calibration_depth_tier,
+            volatility_tier=volatility_tier,
+            data_grounding_tier=data_grounding_tier,
+            confidence_score=round(confidence_score, 4),
+            historical_support_score=round(historical_support_score, 4),
+            calibration_depth_score=round(calibration_depth_score, 4),
+            data_grounding_score=round(data_grounding_score, 4),
+            confidence_summary=_confidence_summary(
+                confidence_tier=confidence_tier,
+                historical_support_tier=historical_support_tier,
+                volatility_tier=volatility_tier,
+                track_name=track.name,
+            ),
+            calibration_notes=calibration_notes,
+            support_notes=support_notes,
+            coverage_notes=coverage_notes,
+            experimental_flag=confidence_tier == "Experimental / Low confidence",
+            provenance=provenance,
+            backtest_summary=backtest_summary,
+        )
+
     def _confidence_label(self, uncertainty_index: float, event_exposure: float, dnf_probability: float) -> str:
         combined = uncertainty_index * 0.5 + event_exposure * 0.35 + dnf_probability * 0.15
         if combined < 0.2:
@@ -1095,3 +1281,77 @@ class SimulationService:
         sprint_multiplier = min(1.0, 0.48 + profile.qualifying_leverage * 0.36 + profile.strategy_fit.score / 140.0)
         sprint_points = sprint_seed * sprint_multiplier
         return race_points + sprint_points
+
+
+@lru_cache(maxsize=1)
+def _normalized_circuit_ids() -> set[str]:
+    root = historical_normalized_root()
+    if not root.exists():
+        return set()
+
+    circuit_ids: set[str] = set()
+    for path in root.glob("*.json"):
+        stem = path.stem
+        parts = stem.split("-", 1)
+        circuit_ids.add(parts[1] if len(parts) == 2 else stem)
+    return circuit_ids
+
+
+@lru_cache(maxsize=1)
+def _backtest_report() -> dict:
+    report_path = historical_reports_root() / "2024-backtest-smoke.json"
+    fallback_aggregate = {
+        "weekends": 0,
+        "winner_hit_rate": 0.0,
+        "avg_podium_overlap_rate": 0.0,
+        "avg_finish_mae": 0.0,
+        "avg_stop_count_mae": 0.0,
+        "avg_track_behavior_error": 0.0,
+    }
+    if not report_path.exists():
+        return {"aggregate": fallback_aggregate, "weekend_ids": set()}
+
+    payload = json.loads(report_path.read_text())
+    aggregate = payload.get("aggregate") or fallback_aggregate
+    weekend_ids = {
+        weekend.get("grand_prix_id")
+        for weekend in payload.get("weekends", [])
+        if weekend.get("grand_prix_id")
+    }
+    return {"aggregate": aggregate, "weekend_ids": weekend_ids}
+
+
+def _clamp(value: float, lower: float = 0.0, upper: float = 1.0) -> float:
+    return max(lower, min(upper, value))
+
+
+def _tier_label(score: float, *, high: str, medium: str, low: str) -> str:
+    if score >= 0.72:
+        return high
+    if score >= 0.48:
+        return medium
+    return low
+
+
+def _volatility_tier(score: float) -> str:
+    if score < 0.34:
+        return "Stable"
+    if score < 0.62:
+        return "Variable"
+    return "High-chaos"
+
+
+def _confidence_summary(
+    *,
+    confidence_tier: str,
+    historical_support_tier: str,
+    volatility_tier: str,
+    track_name: str,
+) -> str:
+    if confidence_tier == "High confidence":
+        return f"{track_name} sits inside one of the better-supported scenario families, so treat the result as a calibrated probability map rather than a pure extrapolation."
+    if confidence_tier == "Experimental / Low confidence":
+        return f"{track_name} is currently an experimental read here: historical support is thinner and the scenario state is more volatile, so use the board as directional guidance only."
+    if historical_support_tier == "Limited support":
+        return f"{track_name} is only partially grounded by the current historical set. The broad race shape is useful, but the detailed order should be treated cautiously."
+    return f"{track_name} is moderately grounded: historically anchored enough to trust the broad race shape, but still sensitive to modeled weather, disruption, and strategy assumptions."
