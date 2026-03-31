@@ -2612,7 +2612,7 @@ export function SimulatorWorkspace() {
 
   return (
     <div className="space-y-3">
-      <motion.section {...motionProps} className="sticky top-[5.25rem] z-20">
+      <motion.section {...motionProps}>
         <Card className="overflow-hidden border-[#1f1f1f]">
           <CardContent className="p-3.5">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3 border-b border-[#1f1f1f] pb-3">
