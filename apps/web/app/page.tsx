@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -6,6 +7,7 @@ import {
   Flag,
   GitBranch,
   LayoutDashboard,
+  ShieldCheck,
   Sigma,
 } from "lucide-react";
 
@@ -29,13 +31,19 @@ const pillars = [
     text: "Weather swings, VSCs, safety cars, red flags, incidents, and DNFs are sampled repeatedly so the result stays probabilistic instead of fixed.",
     icon: CloudSunRain,
   },
+  {
+    title: "Trust and calibration layer",
+    text: "Each scenario now carries confidence, historical support, grounding, and volatility signals so the product is explicit about what is calibrated and what is estimated.",
+    icon: ShieldCheck,
+  },
 ];
 
 const releaseSignals = [
   "24-round 2026 Formula 1 calendar with Sprint weekend flagging where relevant",
-  "22-driver, 11-team grid with real 2026 line-ups and estimated pace priors",
+  "22-driver, 11-team grid with real 2026 line-ups, estimated pace priors, and trust signaling",
   "Circuit-specific behavior for Monaco, Spa, Monza, Singapore, Baku, Las Vegas, and more",
-  "A strategy wall built around pit windows, track position, energy deployment, and race control risk",
+  "Compare Mode for A/B strategy analysis, deltas, and race-evolution shifts",
+  "Historical backtesting, provenance separation, and calibration-aware race reads",
 ];
 
 export default function HomePage() {
@@ -46,10 +54,10 @@ export default function HomePage() {
           <CardContent className="p-8 sm:p-10 lg:p-12">
             <Badge>2026 Formula 1 Grand Prix simulation</Badge>
             <h1 className="mt-6 max-w-5xl font-display text-[clamp(3rem,7vw,6.2rem)] leading-[0.92] tracking-[-0.05em] text-white">
-              A 2026 Formula 1 race strategy app for pace, tire degradation, deployment, and race control.
+              A 2026 Formula 1 strategy wall for pace, tire degradation, deployment, race control, and scenario comparison.
             </h1>
             <p className="mt-6 max-w-3xl text-lg leading-8 text-muted-foreground">
-              Orya One RaceSim is built around a real Grand Prix workflow: choose a 2026 Formula 1 round, review the circuit, tune the race assumptions, compare strategy plans, and inspect probability-based outcomes from one strategy wall.
+              Orya One RaceSim is built around a Grand Prix decision workflow: choose a 2026 Formula 1 round, review circuit behavior, tune race-control assumptions, compare two scenarios when needed, and inspect calibrated probability-based outcomes from one strategy wall.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button asChild size="lg">
@@ -74,57 +82,48 @@ export default function HomePage() {
 
         <Card className="border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))]">
           <CardHeader>
-            <Badge variant="warning">Live strategy wall layout</Badge>
+            <Badge variant="warning">Live product snapshots</Badge>
             <CardTitle className="mt-4 text-2xl">Built around a Grand Prix weekend</CardTitle>
             <CardDescription>
-              The simulator is organized around circuit setup, race control assumptions, strategy planning, driver and team inputs, and race outcome projection.
+              The current UI now spans the branded hero, the strategy wall itself, and the simulation output board used to read race evolution and decision deltas.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="rounded-[18px] border border-primary/18 bg-slate-950/80 p-5">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Example weekend</div>
-                  <div className="mt-1 font-display text-2xl text-white">Belgian Grand Prix</div>
-                </div>
-                <div className="rounded-[10px] border border-primary/20 bg-primary/10 px-4 py-2 text-xs uppercase tracking-[0.18em] text-primary">
-                  Spa · 1200 runs
-                </div>
+            <div className="overflow-hidden rounded-[18px] border border-primary/18 bg-slate-950/80">
+              <Image
+                src="/brand/orya_hero_banner.svg"
+                alt="Orya One RaceSim hero banner showing 2026 strategy simulator branding and key season metrics."
+                width={680}
+                height={386}
+                className="h-auto w-full"
+                priority
+              />
+            </div>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="overflow-hidden rounded-[18px] border border-white/8 bg-black/20">
+                <Image
+                  src="/brand/orya_strategy_wall.svg"
+                  alt="Strategy wall preview showing race control, stint planning, timing strip, and driver strategy modules."
+                  width={680}
+                  height={390}
+                  className="h-auto w-full"
+                />
               </div>
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-[14px] border border-white/8 bg-white/[0.03] p-4">
-                  <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Weekend pressure</div>
-                  <div className="mt-2 text-lg text-white">Weather and crossover timing</div>
-                  <div className="mt-2 text-sm text-muted-foreground">
-                    The strategy layer can react to rain cells, safety cars, and late-race interruptions instead of assuming a clean dry Sunday.
-                  </div>
-                </div>
-                <div className="rounded-[14px] border border-white/8 bg-white/[0.03] p-4">
-                  <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">2026-specific logic</div>
-                  <div className="mt-2 text-lg text-white">Deployment and active-aero framing</div>
-                  <div className="mt-2 text-sm text-muted-foreground">
-                    Circuits such as Monza, Baku, and Las Vegas now put more weight on energy release and overtaking windows than the earlier sample model did.
-                  </div>
-                </div>
-              </div>
-              <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                {[
-                  { label: "Season data", value: "2026 grid + calendar" },
-                  { label: "Strategy layer", value: "Pit windows + undercut + SC" },
-                  { label: "Race model", value: "Pace + tire + deployment + events" },
-                ].map((item) => (
-                  <div key={item.label} className="rounded-[14px] border border-white/8 bg-black/20 p-4">
-                    <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{item.label}</div>
-                    <div className="mt-2 text-white">{item.value}</div>
-                  </div>
-                ))}
+              <div className="overflow-hidden rounded-[18px] border border-white/8 bg-black/20">
+                <Image
+                  src="/brand/orya_simulation_output.svg"
+                  alt="Simulation output preview showing win probabilities, strategy ladders, and lap-by-lap race output."
+                  width={680}
+                  height={390}
+                  className="h-auto w-full"
+                />
               </div>
             </div>
           </CardContent>
         </Card>
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-3">
+      <section className="grid gap-6 lg:grid-cols-4">
         {pillars.map((pillar) => (
           <Card key={pillar.title}>
             <CardHeader>
@@ -149,10 +148,10 @@ export default function HomePage() {
           </CardHeader>
           <CardContent className="space-y-4 text-sm leading-7 text-muted-foreground">
             <p>
-              Circuit profile, race-control tuning, strategy comparison, and driver-level outputs sit in one workspace. The intent is to make the tradeoffs readable while keeping the flow dense enough to feel useful.
+              Circuit profile, race-control tuning, Compare Mode, trust signaling, and driver-level outputs sit in one workspace. The intent is to make the tradeoffs readable while keeping the flow dense enough to feel useful.
             </p>
             <p>
-              For now the app still uses estimated priors rather than real telemetry or official timing feeds, but the season structure and weekend framing are now explicitly 2026 Formula 1.
+              The app still uses modeled pace priors rather than live telemetry, but the season structure, historical support layer, and trust messaging now make it clearer where the simulator is grounded and where it is exploratory.
             </p>
           </CardContent>
         </Card>
@@ -171,8 +170,8 @@ export default function HomePage() {
             {[
               "Real 2026 entities in the catalog, with estimated circuit and team priors",
               "FastAPI backend with typed Next.js frontend contracts",
-              "Documented model notes, data model, and architecture",
-              "Simulation outputs for expected finish, points, podium, win, and disruption risk",
+              "Historical backtesting, provenance separation, and calibration-aware trust summaries",
+              "Simulation outputs for expected finish, points, podium, win, disruption risk, and compare deltas",
             ].map((item) => (
               <div key={item} className="rounded-[16px] border border-white/8 bg-black/20 p-4 text-sm leading-6 text-muted-foreground">
                 {item}

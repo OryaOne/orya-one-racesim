@@ -19,11 +19,15 @@ const sections = [
     text: "Weather shifts, yellow flags, VSCs, safety cars, red flags, incidents, and DNFs are sampled repeatedly. The result is a probability distribution for the configured weekend, not a single hard forecast.",
   },
   {
-    title: "5. Trust and calibration layer",
+    title: "5. Historical backtesting and calibration",
+    text: "The simulator now includes an official-source-backed historical pipeline, normalized weekend schema, and backtesting workflow used to tune circuit leverage, strategy pressure, and race-control assumptions against a focused set of real Grands Prix.",
+  },
+  {
+    title: "6. Trust and calibration layer",
     text: "Each scenario now carries an explicit trust summary: confidence tier, historical support tier, calibration depth, data grounding, and volatility. Those trust labels are derived from the current historical support basket, backtest coverage, and scenario complexity rather than from marketing-style certainty scores.",
   },
   {
-    title: "6. Provenance separation",
+    title: "7. Provenance separation",
     text: "The product keeps official source data, normalized historical datasets, modeled seed priors, calibrated parameters, and live user assumptions separate on purpose. The simulator does not present modeled assumptions as if they were official FIA / Formula 1 facts.",
   },
 ];
@@ -128,6 +132,7 @@ export default function MethodologyPage() {
             {[
               "Circuit-specific behavior for overtaking, qualifying weight, tire stress, safety-car risk, and deployment sensitivity",
               "Strategy recommendations tied to weather, track position, degradation, and race-control assumptions",
+              "Compare Mode for structured A/B scenario decisions instead of only single-board reads",
               "Driver explanations built from actual model signals instead of generic summary text",
               "Points-aware weekend outputs, including expected race points and constructors contribution",
               "Scenario trust summaries that separate historically grounded baselines from more experimental weather- or chaos-heavy reads",
@@ -172,9 +177,9 @@ export default function MethodologyPage() {
         <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {[
             "Qualifying simulation and Q3 probability outputs",
+            "Broader historical coverage across more circuits and weather families",
             "More detailed Sprint-weekend handling",
-            "Richer wet crossover and lap-window weather logic",
-            "Calibration against real historical Formula 1 data",
+            "Richer FIA race-control and lap-window weather ingestion",
           ].map((item) => (
             <div key={item} className="rounded-[16px] border border-white/8 bg-black/20 p-4 text-sm leading-7 text-muted-foreground">
               {item}
